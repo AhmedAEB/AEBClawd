@@ -9,8 +9,10 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.80",
+    "winston": "^3.19.0",
     "ws": "^8.18.0",
-    "dotenv": "^16.4.7"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^20",
