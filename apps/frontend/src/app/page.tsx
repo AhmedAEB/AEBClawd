@@ -83,13 +83,103 @@ export default function Home() {
     });
   }, [fetchSessions]);
 
-  const selectSession = useCallback((s: SessionInfo) => {
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const selectSession = useCallback(async (s: SessionInfo) => {
     setSessionId(s.sessionId);
     setMessages([]);
     streamBufferRef.current = "";
     setPendingApprovals([]);
     setShowSessions(false);
     setStatusInfo({});
+    setHistoryLoading(true);
+
+    try {
+      const res = await fetch(`${API_URL}/api/sessions/${s.sessionId}/messages?limit=200`);
+      const data: Array<{
+        type: "user" | "assistant";
+        message: {
+          role?: string;
+          content?: unknown;
+        };
+      }> = await res.json();
+
+      const parsed: Message[] = [];
+      for (const msg of data) {
+        if (msg.type === "user") {
+          const content = msg.message?.content;
+          // User messages can be a string or array of content blocks
+          if (typeof content === "string") {
+            parsed.push({ role: "user", content, timestamp: 0 });
+          } else if (Array.isArray(content)) {
+            // Extract text from user prompt blocks
+            const textParts: string[] = [];
+            for (const block of content) {
+              if (block.type === "text") {
+                textParts.push(block.text);
+              } else if (block.type === "tool_result") {
+                const resultContent =
+                  typeof block.content === "string"
+                    ? block.content
+                    : JSON.stringify(block.content);
+                const truncated =
+                  resultContent.length > 500
+                    ? resultContent.slice(0, 500) + "..."
+                    : resultContent;
+                parsed.push({
+                  role: "event",
+                  content: truncated,
+                  timestamp: 0,
+                  eventType: block.is_error ? "tool_error" : "tool_result",
+                });
+              }
+            }
+            if (textParts.length > 0) {
+              parsed.push({ role: "user", content: textParts.join(""), timestamp: 0 });
+            }
+          }
+        } else if (msg.type === "assistant") {
+          const blocks = msg.message?.content;
+          if (Array.isArray(blocks)) {
+            for (const block of blocks as any[]) {
+              if (block.type === "thinking" && block.thinking) {
+                parsed.push({
+                  role: "event",
+                  content: block.thinking.slice(0, 500) + (block.thinking.length > 500 ? "..." : ""),
+                  timestamp: 0,
+                  eventType: "thinking",
+                });
+              } else if (block.type === "text" && block.text) {
+                parsed.push({ role: "assistant", content: block.text, timestamp: 0 });
+              } else if (block.type === "tool_use") {
+                const inputStr = typeof block.input === "string"
+                  ? block.input
+                  : JSON.stringify(block.input, null, 2);
+                const truncInput = inputStr.slice(0, 300) + (inputStr.length > 300 ? "..." : "");
+                parsed.push({
+                  role: "event",
+                  content: `${block.name}\n${truncInput}`,
+                  timestamp: 0,
+                  eventType: "tool_use",
+                });
+              }
+            }
+          }
+        }
+      }
+
+      setMessages(parsed);
+    } catch (err) {
+      console.error("[sessions] Failed to load history:", err);
+      setMessages([{
+        role: "event",
+        content: "Failed to load session history",
+        timestamp: Date.now(),
+        eventType: "error",
+      }]);
+    } finally {
+      setHistoryLoading(false);
+    }
   }, []);
 
   const startNewSession = useCallback(() => {
@@ -564,7 +654,16 @@ export default function Home() {
         {/* Messages */}
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-2xl space-y-3 px-6 py-6">
-            {messages.length === 0 && (
+            {historyLoading && (
+              <div className="flex items-center justify-center pt-[30vh]">
+                <div className="flex items-center gap-3">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gold/20 border-t-gold" />
+                  <span className="text-sm text-fg-3">Loading session history...</span>
+                </div>
+              </div>
+            )}
+
+            {messages.length === 0 && !historyLoading && (
               <div className="flex flex-col items-center justify-center pt-[30vh]">
                 <h2 className="animate-shimmer font-display text-2xl font-bold tracking-tight text-fg-3/50">
                   What would you like to build?
