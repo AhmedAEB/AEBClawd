@@ -1,80 +1,78 @@
-import { type Server } from "http";
-import { WebSocketServer, WebSocket } from "ws";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { logger } from "./logger.js";
 import { runQuery } from "./claude.js";
-import type { Session, ClientMessage, ServerMessage } from "./types.js";
+import type { ToolApprovalResolver } from "./types.js";
 
-const sessions = new Map<WebSocket, Session>();
-
-function send(ws: WebSocket, payload: ServerMessage) {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(payload));
-  }
+interface ClientConnection {
+  sendEvent: (event: string, data: unknown) => void;
+  abortController: AbortController | null;
+  sessionId: string | null;
+  pendingApprovals: Map<string, ToolApprovalResolver>;
 }
 
-function abortSession(ws: WebSocket) {
-  const session = sessions.get(ws);
-  if (!session) return;
+const clients = new Map<string, ClientConnection>();
 
-  if (session.abortController) {
-    session.abortController.abort();
-    session.abortController = null;
-    session.query = null;
-  }
-
-  for (const [, pending] of session.pendingApprovals) {
-    pending.resolve({ behavior: "deny", message: "Session aborted" });
-  }
-  session.pendingApprovals.clear();
-}
-
-function handleToolApprovalResponse(
-  ws: WebSocket,
-  toolUseId: string,
-  approved: boolean,
-  reason?: string,
+export function registerClient(
+  clientId: string,
+  sendEvent: (event: string, data: unknown) => void,
 ) {
-  const session = sessions.get(ws);
-  if (!session) return;
-
-  const pending = session.pendingApprovals.get(toolUseId);
-  if (!pending) return;
-
-  session.pendingApprovals.delete(toolUseId);
-  if (approved) {
-    pending.resolve({ behavior: "allow" });
-  } else {
-    pending.resolve({ behavior: "deny", message: reason || "User denied" });
+  const existing = clients.get(clientId);
+  if (existing) {
+    existing.sendEvent = sendEvent;
+    logger.info(`Client reconnected: ${clientId}`);
+    return;
   }
+  clients.set(clientId, {
+    sendEvent,
+    abortController: null,
+    sessionId: null,
+    pendingApprovals: new Map(),
+  });
+  logger.info(`Client connected: ${clientId}`);
 }
 
-async function handlePrompt(ws: WebSocket, prompt: string, sessionId?: string, workDir?: string) {
-  const session = sessions.get(ws);
-  if (!session) return;
+export function unregisterClient(clientId: string) {
+  const client = clients.get(clientId);
+  if (!client) return;
 
-  // Abort any existing query
-  if (session.abortController) {
-    session.abortController.abort();
-    session.query = null;
-    session.abortController = null;
+  if (client.abortController) {
+    client.abortController.abort();
+  }
+  for (const [, pending] of client.pendingApprovals) {
+    pending.resolve({ behavior: "deny", message: "Client disconnected" });
+  }
+  clients.delete(clientId);
+  logger.info(`Client disconnected: ${clientId}`);
+}
+
+export async function handlePrompt(
+  clientId: string,
+  prompt: string,
+  sessionId?: string,
+  workDir?: string,
+): Promise<boolean> {
+  const client = clients.get(clientId);
+  if (!client) return false;
+
+  if (client.abortController) {
+    client.abortController.abort();
+    client.abortController = null;
   }
 
-  const resumeId = sessionId || session.sessionId || undefined;
+  const resumeId = sessionId || client.sessionId || undefined;
   const cwd = workDir || process.cwd();
 
   const abortController = await runQuery({ prompt, resumeId, cwd }, {
     onMessage: (message: SDKMessage) => {
       if ("session_id" in message && message.session_id) {
-        session.sessionId = message.session_id;
+        client.sessionId = message.session_id;
       }
-      send(ws, { type: "stream", data: message });
+      client.sendEvent("stream", message);
     },
     onToolApproval: (toolName, input, opts) => {
       return new Promise((resolve) => {
-        session.pendingApprovals.set(opts.toolUseID, { resolve });
-        send(ws, {
-          type: "tool_approval_request",
+        client.pendingApprovals.set(opts.toolUseID, { resolve });
+        client.sendEvent("tool_approval", {
           toolName,
           input,
           toolUseId: opts.toolUseID,
@@ -84,58 +82,53 @@ async function handlePrompt(ws: WebSocket, prompt: string, sessionId?: string, w
       });
     },
     onDone: () => {
-      send(ws, { type: "done", sessionId: session.sessionId });
-      session.query = null;
-      session.abortController = null;
-      for (const [, pending] of session.pendingApprovals) {
+      client.sendEvent("done", { sessionId: client.sessionId });
+      client.abortController = null;
+      for (const [, pending] of client.pendingApprovals) {
         pending.resolve({ behavior: "deny", message: "Session ended" });
       }
-      session.pendingApprovals.clear();
+      client.pendingApprovals.clear();
     },
     onError: (err) => {
-      send(ws, { type: "error", data: err.message });
+      client.sendEvent("server_error", { message: err.message });
     },
   });
 
-  session.abortController = abortController;
+  client.abortController = abortController;
+  return true;
 }
 
-export function setupWebSocketServer(httpServer: Server): WebSocketServer {
-  const wss = new WebSocketServer({ server: httpServer });
+export function handleToolApproval(
+  clientId: string,
+  toolUseId: string,
+  approved: boolean,
+  reason?: string,
+) {
+  const client = clients.get(clientId);
+  if (!client) return;
 
-  wss.on("connection", (ws) => {
-    logger.info("Client connected");
-    sessions.set(ws, {
-      query: null,
-      abortController: null,
-      sessionId: null,
-      pendingApprovals: new Map(),
-    });
+  const pending = client.pendingApprovals.get(toolUseId);
+  if (!pending) return;
 
-    ws.on("message", (raw) => {
-      let msg: ClientMessage;
-      try {
-        msg = JSON.parse(raw.toString());
-      } catch {
-        send(ws, { type: "error", data: "Invalid JSON" });
-        return;
-      }
+  client.pendingApprovals.delete(toolUseId);
+  pending.resolve(
+    approved
+      ? { behavior: "allow" }
+      : { behavior: "deny", message: reason || "User denied" },
+  );
+}
 
-      if (msg.type === "prompt") {
-        handlePrompt(ws, msg.prompt ?? "", msg.sessionId, msg.workDir);
-      } else if (msg.type === "abort") {
-        abortSession(ws);
-      } else if (msg.type === "tool_approval_response") {
-        handleToolApprovalResponse(ws, msg.toolUseId, msg.approved, msg.reason);
-      }
-    });
+export function handleAbort(clientId: string) {
+  const client = clients.get(clientId);
+  if (!client) return;
 
-    ws.on("close", () => {
-      abortSession(ws);
-      sessions.delete(ws);
-      logger.info("Client disconnected");
-    });
-  });
+  if (client.abortController) {
+    client.abortController.abort();
+    client.abortController = null;
+  }
 
-  return wss;
+  for (const [, pending] of client.pendingApprovals) {
+    pending.resolve({ behavior: "deny", message: "Aborted by user" });
+  }
+  client.pendingApprovals.clear();
 }

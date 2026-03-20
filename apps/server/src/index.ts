@@ -1,15 +1,20 @@
-import { createServer } from "http";
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { env } from "./lib/env.js";
 import { logger } from "./lib/logger.js";
-import { setupWebSocketServer } from "./lib/session.js";
+import sessions from "./routes/sessions.js";
+import stream from "./routes/stream.js";
 
-const httpServer = createServer((_req, res) => {
-  res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ status: "ok" }));
-});
+const app = new Hono();
 
-setupWebSocketServer(httpServer);
+app.use("*", cors());
 
-httpServer.listen(env.PORT, () => {
+app.route("/api/sessions", sessions);
+app.route("/api/stream", stream);
+
+app.get("/", (c) => c.json({ status: "ok" }));
+
+serve({ fetch: app.fetch, port: env.PORT }, () => {
   logger.info(`Server listening on port ${env.PORT}`);
 });
