@@ -129,7 +129,6 @@ export default function Home() {
 
   const handleStreamData = useCallback(
     (data: any) => {
-      // ── system events ──
       if (data.type === "system") {
         if (data.subtype === "init") {
           const toolCount = data.tools?.length ?? 0;
@@ -155,7 +154,6 @@ export default function Home() {
         }
       }
 
-      // ── stream_event (token-by-token deltas) ──
       if (data.type === "stream_event" && data.event) {
         const ev = data.event;
         if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta") {
@@ -164,7 +162,6 @@ export default function Home() {
         }
       }
 
-      // ── assistant message (complete or partial snapshot) ──
       if (data.type === "assistant" && data.message?.content) {
         const blocks: any[] = data.message.content;
 
@@ -198,7 +195,6 @@ export default function Home() {
         }
       }
 
-      // ── user message (tool results) ──
       if (data.type === "user" && data.message?.content) {
         const blocks: any[] = Array.isArray(data.message.content)
           ? data.message.content
@@ -242,7 +238,6 @@ export default function Home() {
         }
       }
 
-      // ── rate_limit_event ──
       if (data.type === "rate_limit_event") {
         const info = data.rate_limit_info;
         if (info) {
@@ -256,7 +251,6 @@ export default function Home() {
         }
       }
 
-      // ── result (final summary) ──
       if (data.type === "result") {
         if (data.session_id) setSessionId(data.session_id);
         setStatusInfo((prev) => ({
@@ -277,7 +271,7 @@ export default function Home() {
           parts.push(`${data.permission_denials.length} permission denied`);
         }
 
-        addEvent("result", `Completed: ${parts.join(" | ")}`, {
+        addEvent("result", `Completed: ${parts.join(" · ")}`, {
           usage: data.usage,
           modelUsage: data.modelUsage,
           permissionDenials: data.permission_denials,
@@ -397,20 +391,20 @@ export default function Home() {
     }
   };
 
-  const eventStyles: Record<string, string> = {
-    init: "border-blue-800/50 bg-blue-950/30 text-blue-300",
-    retry: "border-amber-800/50 bg-amber-950/30 text-amber-300",
-    rate_limit: "border-purple-800/50 bg-purple-950/30 text-purple-300",
-    thinking: "border-violet-800/50 bg-violet-950/30 text-violet-300",
-    tool_use: "border-cyan-800/50 bg-cyan-950/30 text-cyan-300",
-    tool_result: "border-teal-800/50 bg-teal-950/30 text-teal-300",
-    tool_output: "border-teal-800/50 bg-teal-950/30 text-teal-300",
-    tool_error: "border-red-800/50 bg-red-950/30 text-red-300",
-    result: "border-emerald-800/50 bg-emerald-950/30 text-emerald-300",
-    error: "border-red-800/50 bg-red-950/30 text-red-300",
-    stderr: "border-red-800/50 bg-red-950/30 text-red-300",
-    raw: "border-zinc-700/50 bg-zinc-900/30 text-zinc-400",
-    system: "border-zinc-700/50 bg-zinc-900/30 text-zinc-400",
+  const eventAccents: Record<string, string> = {
+    init: "border-l-info text-info/80",
+    retry: "border-l-warn text-warn/80",
+    rate_limit: "border-l-warn text-warn/80",
+    thinking: "border-l-gold/60 text-gold/70",
+    tool_use: "border-l-info/60 text-info/80",
+    tool_result: "border-l-ok/60 text-ok/70",
+    tool_output: "border-l-ok/60 text-ok/70",
+    tool_error: "border-l-err text-err/80",
+    result: "border-l-ok text-ok/80",
+    error: "border-l-err text-err/80",
+    stderr: "border-l-err text-err/80",
+    raw: "border-l-fg-3/40 text-fg-3",
+    system: "border-l-fg-3/40 text-fg-3",
   };
 
   const eventLabels: Record<string, string> = {
@@ -430,138 +424,171 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-zinc-950 text-zinc-100">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-void text-fg">
+      {/* Ambient glow */}
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute left-1/2 top-0 h-[500px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/[0.015] blur-[100px]" />
+      </div>
+
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-zinc-800 px-6 py-3">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold tracking-tight">AEBClawd</h1>
+      <header className="relative z-10 flex items-center justify-between border-b border-edge px-6 py-3">
+        <div className="flex items-center gap-4">
+          <h1 className="font-display text-[15px] font-bold tracking-[-0.02em]">
+            AEBClawd
+          </h1>
           <button
             onClick={toggleSessions}
-            className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-md px-2.5 py-1 text-[11px] font-semibold tracking-wide uppercase transition-all duration-200 ${
               showSessions
-                ? "bg-blue-600 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+                ? "bg-gold/10 text-gold"
+                : "text-fg-3 hover:text-fg-2"
             }`}
           >
             Sessions
           </button>
         </div>
-        <div className="flex items-center gap-4 text-xs">
+
+        <div className="flex items-center gap-3 font-mono text-[11px]">
           {statusInfo.model && (
-            <span className="text-zinc-500">{statusInfo.model}</span>
+            <span className="text-fg-3">{statusInfo.model}</span>
           )}
           {statusInfo.permissionMode && (
-            <span className="text-amber-500">{statusInfo.permissionMode}</span>
+            <span className="rounded bg-warn/10 px-1.5 py-0.5 text-warn">
+              {statusInfo.permissionMode}
+            </span>
           )}
           {statusInfo.turns !== undefined && (
-            <span className="text-zinc-500">
+            <span className="text-fg-3">
               {statusInfo.turns} turn{statusInfo.turns !== 1 ? "s" : ""}
             </span>
           )}
           {statusInfo.costUsd !== undefined && (
-            <span className="text-emerald-500 font-mono">
+            <span className="text-gold">
               ${statusInfo.costUsd.toFixed(4)}
             </span>
           )}
           {sessionId && (
-            <span className="text-zinc-600 font-mono">{sessionId.slice(0, 8)}</span>
+            <span className="text-fg-3/40">{sessionId.slice(0, 8)}</span>
           )}
           <span
-            className={`h-2 w-2 rounded-full ${
-              isConnected ? "bg-emerald-500" : "bg-red-500"
+            className={`h-1.5 w-1.5 rounded-full ${
+              isConnected ? "bg-ok animate-pulse-dot" : "bg-err"
             }`}
           />
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sessions Sidebar */}
+      {/* Content */}
+      <div className="relative flex flex-1 overflow-hidden">
+        {/* Sessions panel */}
         {showSessions && (
-          <aside className="w-80 shrink-0 border-r border-zinc-800 bg-zinc-900/50 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-              <span className="text-sm font-medium text-zinc-300">Sessions</span>
-              <button
-                onClick={startNewSession}
-                className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
-              >
-                + New
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {sessionsLoading ? (
-                <div className="p-4 text-center text-xs text-zinc-500">Loading...</div>
-              ) : sessionsList.length === 0 ? (
-                <div className="p-4 text-center text-xs text-zinc-500">No sessions found</div>
-              ) : (
-                sessionsList.map((s) => {
-                  const isActive = sessionId === s.sessionId;
-                  const age = Date.now() - s.lastModified;
-                  const timeAgo =
-                    age < 60_000 ? "just now"
-                    : age < 3_600_000 ? `${Math.floor(age / 60_000)}m ago`
-                    : age < 86_400_000 ? `${Math.floor(age / 3_600_000)}h ago`
-                    : `${Math.floor(age / 86_400_000)}d ago`;
-                  const dirName = s.cwd?.split("/").pop() ?? "";
-                  const summary = s.customTitle || s.summary || s.firstPrompt || "Untitled";
-                  const truncSummary = summary.length > 80 ? summary.slice(0, 80) + "..." : summary;
+          <>
+            <div
+              className="absolute inset-0 z-10 bg-void/60 backdrop-blur-sm"
+              onClick={() => setShowSessions(false)}
+            />
+            <aside className="absolute inset-y-0 left-0 z-20 flex w-80 animate-slide-in-left flex-col border-r border-edge bg-panel/95 backdrop-blur-xl">
+              <div className="flex items-center justify-between border-b border-edge px-5 py-3.5">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-fg-3">
+                  Sessions
+                </span>
+                <button
+                  onClick={startNewSession}
+                  className="rounded-md bg-gold/10 px-3 py-1 text-[11px] font-semibold text-gold transition-colors hover:bg-gold/20"
+                >
+                  New
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {sessionsLoading ? (
+                  <div className="flex items-center justify-center py-16">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-gold/20 border-t-gold" />
+                  </div>
+                ) : sessionsList.length === 0 ? (
+                  <div className="px-5 py-16 text-center text-xs text-fg-3">
+                    No sessions yet
+                  </div>
+                ) : (
+                  sessionsList.map((s) => {
+                    const isActive = sessionId === s.sessionId;
+                    const age = Date.now() - s.lastModified;
+                    const timeAgo =
+                      age < 60_000
+                        ? "now"
+                        : age < 3_600_000
+                          ? `${Math.floor(age / 60_000)}m`
+                          : age < 86_400_000
+                            ? `${Math.floor(age / 3_600_000)}h`
+                            : `${Math.floor(age / 86_400_000)}d`;
+                    const dirName = s.cwd?.split("/").pop() ?? "";
+                    const summary =
+                      s.customTitle || s.summary || s.firstPrompt || "Untitled";
+                    const truncSummary =
+                      summary.length > 70 ? summary.slice(0, 70) + "..." : summary;
 
-                  return (
-                    <button
-                      key={s.sessionId}
-                      onClick={() => selectSession(s)}
-                      className={`w-full text-left px-4 py-3 border-b border-zinc-800/50 transition-colors ${
-                        isActive
-                          ? "bg-blue-600/20 border-l-2 border-l-blue-500"
-                          : "hover:bg-zinc-800/50"
-                      }`}
-                    >
-                      <div className="text-xs text-zinc-200 leading-snug line-clamp-2">
-                        {truncSummary}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1.5 text-[10px] text-zinc-500">
-                        {dirName && (
-                          <span className="bg-zinc-800 rounded px-1.5 py-0.5 font-mono">
-                            {dirName}
-                          </span>
-                        )}
-                        {s.gitBranch && (
-                          <span className="bg-zinc-800 rounded px-1.5 py-0.5 font-mono">
-                            {s.gitBranch}
-                          </span>
-                        )}
-                        <span className="ml-auto">{timeAgo}</span>
-                      </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </aside>
+                    return (
+                      <button
+                        key={s.sessionId}
+                        onClick={() => selectSession(s)}
+                        className={`group w-full text-left px-5 py-3 border-b border-edge/50 transition-all duration-150 ${
+                          isActive
+                            ? "bg-gold/5 border-l-2 border-l-gold"
+                            : "hover:bg-panel-2"
+                        }`}
+                      >
+                        <div className="text-[13px] leading-snug text-fg-2 group-hover:text-fg line-clamp-2">
+                          {truncSummary}
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-2 text-[10px] text-fg-3">
+                          {dirName && (
+                            <span className="rounded bg-panel-3/50 px-1.5 py-0.5 font-mono">
+                              {dirName}
+                            </span>
+                          )}
+                          {s.gitBranch && (
+                            <span className="rounded bg-panel-3/50 px-1.5 py-0.5 font-mono">
+                              {s.gitBranch}
+                            </span>
+                          )}
+                          <span className="ml-auto tabular-nums">{timeAgo}</span>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </aside>
+          </>
         )}
 
         {/* Messages */}
-        <main className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="mx-auto max-w-3xl space-y-2">
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-2xl space-y-3 px-6 py-6">
             {messages.length === 0 && (
-              <div className="flex h-full items-center justify-center pt-32">
-                <p className="text-zinc-600">Send a message to get started.</p>
+              <div className="flex flex-col items-center justify-center pt-[30vh]">
+                <h2 className="animate-shimmer font-display text-2xl font-bold tracking-tight text-fg-3/50">
+                  What would you like to build?
+                </h2>
               </div>
             )}
+
             {messages.map((msg, i) => {
               if (msg.role === "event") {
-                const style =
-                  eventStyles[msg.eventType ?? "system"] ?? eventStyles.system;
+                const accent =
+                  eventAccents[msg.eventType ?? "system"] ?? eventAccents.system;
                 const label =
                   eventLabels[msg.eventType ?? "system"] ?? "EVENT";
                 return (
-                  <div key={i} className="flex justify-start">
+                  <div key={i} className="animate-fade-in">
                     <div
-                      className={`max-w-[95%] rounded-lg border px-3 py-1.5 font-mono text-xs leading-relaxed ${style}`}
+                      className={`border-l-2 ${accent} rounded-r-md bg-panel/40 py-1.5 pl-3 pr-3 font-mono text-[11px] leading-relaxed`}
                     >
-                      <span className="inline-block min-w-[3rem] font-bold opacity-70 mr-2">
+                      <span className="mr-2 inline-block w-14 text-[10px] font-bold uppercase opacity-50">
                         {label}
                       </span>
-                      <span className="whitespace-pre-wrap break-all">{msg.content}</span>
+                      <span className="whitespace-pre-wrap break-all opacity-70">
+                        {msg.content}
+                      </span>
                     </div>
                   </div>
                 );
@@ -570,17 +597,17 @@ export default function Home() {
               return (
                 <div
                   key={i}
-                  className={`flex ${
+                  className={`flex animate-fade-in ${
                     msg.role === "user" ? "justify-end" : "justify-start"
                   }`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed whitespace-pre-wrap ${
                       msg.role === "user"
-                        ? "bg-blue-600 text-white"
+                        ? "bg-gold font-medium text-void"
                         : msg.role === "system"
-                        ? "bg-red-900/50 text-red-300 border border-red-800"
-                        : "bg-zinc-800 text-zinc-200"
+                          ? "border border-err/20 bg-err/10 text-err"
+                          : "bg-panel text-fg-2"
                     }`}
                   >
                     {msg.content}
@@ -588,46 +615,67 @@ export default function Home() {
                 </div>
               );
             })}
-            {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
-              <div className="flex justify-start">
-                <div className="bg-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-400">
-                  <span className="animate-pulse">Thinking...</span>
+
+            {isStreaming &&
+              messages[messages.length - 1]?.role !== "assistant" && (
+                <div className="flex animate-fade-in justify-start">
+                  <div className="flex items-center gap-1.5 rounded-2xl bg-panel px-5 py-4">
+                    <span
+                      className="animate-bounce-dot h-1.5 w-1.5 rounded-full bg-gold"
+                      style={{ animationDelay: "0ms" }}
+                    />
+                    <span
+                      className="animate-bounce-dot h-1.5 w-1.5 rounded-full bg-gold"
+                      style={{ animationDelay: "160ms" }}
+                    />
+                    <span
+                      className="animate-bounce-dot h-1.5 w-1.5 rounded-full bg-gold"
+                      style={{ animationDelay: "320ms" }}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+
             <div ref={messagesEndRef} />
           </div>
         </main>
       </div>
 
-      {/* Tool Approval Requests */}
+      {/* Tool approvals */}
       {pendingApprovals.length > 0 && (
-        <div className="border-t border-amber-800/50 bg-amber-950/20 px-6 py-3">
-          <div className="mx-auto max-w-3xl space-y-2">
+        <div className="relative z-10 border-t border-warn/20 bg-panel/80 px-6 py-3 backdrop-blur-lg">
+          <div className="mx-auto max-w-2xl space-y-2">
             {pendingApprovals.map((approval) => {
               const inputStr = JSON.stringify(approval.input, null, 2);
-              const truncInput = inputStr.length > 200 ? inputStr.slice(0, 200) + "..." : inputStr;
+              const truncInput =
+                inputStr.length > 200
+                  ? inputStr.slice(0, 200) + "..."
+                  : inputStr;
               return (
                 <div
                   key={approval.toolUseId}
-                  className="rounded-lg border border-amber-700/50 bg-amber-950/40 px-4 py-3"
+                  className="animate-fade-in rounded-xl border border-warn/20 bg-warn/5 p-4"
                 >
-                  <div className="text-xs text-amber-300 font-medium mb-1">
-                    {approval.title || `Claude wants to use: ${approval.toolName}`}
+                  <div className="mb-2 text-[13px] font-semibold text-warn">
+                    {approval.title || `Approve: ${approval.toolName}`}
                   </div>
-                  <pre className="text-xs text-amber-200/70 font-mono mb-2 whitespace-pre-wrap break-all">
+                  <pre className="mb-3 whitespace-pre-wrap break-all rounded-lg bg-void/40 p-2.5 font-mono text-[11px] text-fg-3">
                     {truncInput}
                   </pre>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => respondToApproval(approval.toolUseId, true)}
-                      className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                      onClick={() =>
+                        respondToApproval(approval.toolUseId, true)
+                      }
+                      className="rounded-lg bg-ok/10 px-4 py-1.5 text-[12px] font-semibold text-ok transition-colors hover:bg-ok/20"
                     >
                       Allow
                     </button>
                     <button
-                      onClick={() => respondToApproval(approval.toolUseId, false)}
-                      className="rounded-lg bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
+                      onClick={() =>
+                        respondToApproval(approval.toolUseId, false)
+                      }
+                      className="rounded-lg bg-err/10 px-4 py-1.5 text-[12px] font-semibold text-err transition-colors hover:bg-err/20"
                     >
                       Deny
                     </button>
@@ -640,33 +688,35 @@ export default function Home() {
       )}
 
       {/* Input */}
-      <footer className="border-t border-zinc-800 px-6 py-4">
-        <div className="mx-auto flex max-w-3xl gap-3">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={isConnected ? "Message Claude..." : "Connecting..."}
-            disabled={!isConnected}
-            rows={1}
-            className="flex-1 resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-zinc-500 disabled:opacity-50"
-          />
-          {isStreaming ? (
-            <button
-              onClick={abort}
-              className="rounded-xl bg-red-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-red-700"
-            >
-              Stop
-            </button>
-          ) : (
-            <button
-              onClick={sendPrompt}
-              disabled={!input.trim() || !isConnected}
-              className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Send
-            </button>
-          )}
+      <footer className="relative z-10 px-6 pb-6 pt-2">
+        <div className="mx-auto max-w-2xl">
+          <div className="flex items-end gap-2 rounded-2xl border border-edge bg-panel p-2 transition-all duration-200 focus-within:border-gold/30 focus-within:shadow-[0_0_30px_-10px_rgba(201,168,76,0.1)]">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={isConnected ? "Message Claude..." : "Connecting..."}
+              disabled={!isConnected}
+              rows={1}
+              className="flex-1 resize-none bg-transparent px-3 py-2 text-[14px] text-fg outline-none placeholder:text-fg-3 disabled:opacity-40"
+            />
+            {isStreaming ? (
+              <button
+                onClick={abort}
+                className="shrink-0 rounded-xl bg-err/10 px-4 py-2 text-[13px] font-semibold text-err transition-colors hover:bg-err/20"
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                onClick={sendPrompt}
+                disabled={!input.trim() || !isConnected}
+                className="shrink-0 rounded-xl bg-gold px-4 py-2 text-[13px] font-semibold text-void transition-all hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                Send
+              </button>
+            )}
+          </div>
         </div>
       </footer>
     </div>
