@@ -1,6 +1,7 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { logger } from "./logger.js";
 import { runQuery } from "./claude.js";
+import { resolveAndValidate, getWorkspacesRoot } from "./paths.js";
 import type { ToolApprovalResolver } from "./types.js";
 
 interface ClientConnection {
@@ -60,7 +61,18 @@ export async function handlePrompt(
   }
 
   const resumeId = sessionId || client.sessionId || undefined;
-  const cwd = workDir || process.cwd();
+
+  let cwd: string;
+  if (workDir) {
+    try {
+      cwd = resolveAndValidate(workDir);
+    } catch {
+      client.sendEvent("server_error", { message: "workDir is outside workspace root" });
+      return false;
+    }
+  } else {
+    cwd = getWorkspacesRoot();
+  }
 
   const abortController = await runQuery({ prompt, resumeId, cwd }, {
     onMessage: (message: SDKMessage) => {

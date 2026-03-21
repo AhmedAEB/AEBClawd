@@ -1,0 +1,17 @@
+meta {
+  name: Filesystem Mkdir
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/filesystem/mkdir
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "path: dirPath": ""
+  }
+}

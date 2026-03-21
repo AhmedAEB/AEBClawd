@@ -1,0 +1,17 @@
+meta {
+  name: Filesystem Rmdir
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/filesystem/rmdir
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "path: dirPath": ""
+  }
+}
