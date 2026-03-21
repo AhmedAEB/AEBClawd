@@ -213,6 +213,249 @@ git.post("/commit", async (c) => {
   }
 });
 
+// GET /sync-status?dir=...
+git.get("/sync-status", async (c) => {
+  let dir: string;
+  try {
+    dir = getDir(c);
+  } catch {
+    return c.json({ error: "dir is required" }, 400);
+  }
+
+  try {
+    // Get current branch
+    const { stdout: branchOut } = await run(dir, [
+      "rev-parse",
+      "--abbrev-ref",
+      "HEAD",
+    ]);
+    const branch = branchOut.trim();
+
+    // Check if there's an upstream configured
+    let hasUpstream = false;
+    try {
+      await run(dir, [
+        "rev-parse",
+        "--abbrev-ref",
+        `${branch}@{upstream}`,
+      ]);
+      hasUpstream = true;
+    } catch {
+      // No upstream configured
+    }
+
+    if (!hasUpstream) {
+      return c.json({ branch, hasUpstream: false, ahead: 0, behind: 0 });
+    }
+
+    // Fetch latest from remote (non-destructive)
+    try {
+      await run(dir, ["fetch", "--quiet"]);
+    } catch {
+      // Fetch failed (e.g. no network) — still return local counts
+    }
+
+    // Get ahead/behind counts
+    const { stdout: revList } = await run(dir, [
+      "rev-list",
+      "--left-right",
+      "--count",
+      `${branch}...${branch}@{upstream}`,
+    ]);
+    const [ahead, behind] = revList.trim().split(/\s+/).map(Number);
+
+    return c.json({ branch, hasUpstream: true, ahead: ahead || 0, behind: behind || 0 });
+  } catch (err: any) {
+    return c.json(
+      { error: err.message || "Failed to get sync status" },
+      500
+    );
+  }
+});
+
+// POST /push { dir, force? }
+git.post("/push", async (c) => {
+  const { dir: rel, force } = await c.req.json();
+  if (!rel) return c.json({ error: "dir is required" }, 400);
+
+  let dir: string;
+  try {
+    dir = resolveAndValidate(rel);
+  } catch {
+    return c.json({ error: "Path is outside workspace root" }, 403);
+  }
+
+  try {
+    // Get current branch
+    const { stdout: branchOut } = await run(dir, [
+      "rev-parse",
+      "--abbrev-ref",
+      "HEAD",
+    ]);
+    const branch = branchOut.trim();
+
+    // Check if upstream exists
+    let hasUpstream = false;
+    try {
+      await run(dir, ["rev-parse", "--abbrev-ref", `${branch}@{upstream}`]);
+      hasUpstream = true;
+    } catch {
+      // No upstream — push with -u to set it
+    }
+
+    const args = ["push"];
+    if (!hasUpstream) {
+      args.push("-u", "origin", branch);
+    }
+    if (force) {
+      args.push("--force-with-lease");
+    }
+
+    const { stdout, stderr } = await run(dir, args);
+    return c.json({ ok: true, output: (stdout + stderr).trim() });
+  } catch (err: any) {
+    const msg = err.stderr || err.message || "Push failed";
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// POST /pull { dir }
+git.post("/pull", async (c) => {
+  const { dir: rel } = await c.req.json();
+  if (!rel) return c.json({ error: "dir is required" }, 400);
+
+  let dir: string;
+  try {
+    dir = resolveAndValidate(rel);
+  } catch {
+    return c.json({ error: "Path is outside workspace root" }, 403);
+  }
+
+  try {
+    const { stdout, stderr } = await run(dir, ["pull"]);
+    return c.json({ ok: true, output: (stdout + stderr).trim() });
+  } catch (err: any) {
+    const msg = err.stderr || err.message || "Pull failed";
+    // Detect merge conflicts
+    const isConflict =
+      msg.includes("CONFLICT") ||
+      msg.includes("Merge conflict") ||
+      msg.includes("fix conflicts");
+    return c.json({ error: msg, conflict: isConflict }, 500);
+  }
+});
+
+// GET /branches?dir=...
+git.get("/branches", async (c) => {
+  let dir: string;
+  try {
+    dir = getDir(c);
+  } catch {
+    return c.json({ error: "dir is required" }, 400);
+  }
+
+  try {
+    // Get current branch
+    const { stdout: currentOut } = await run(dir, [
+      "rev-parse",
+      "--abbrev-ref",
+      "HEAD",
+    ]);
+    const current = currentOut.trim();
+
+    // List local branches
+    const { stdout: localOut } = await run(dir, [
+      "for-each-ref",
+      "--format=%(refname:short)%00%(objectname:short)%00%(upstream:short)%00%(upstream:track)",
+      "refs/heads/",
+    ]);
+    const local = localOut
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [name, hash, upstream, track] = line.split("\x00");
+        return { name, hash, upstream: upstream || null, track: track || null };
+      });
+
+    // List remote branches
+    const { stdout: remoteOut } = await run(dir, [
+      "for-each-ref",
+      "--format=%(refname:short)%00%(objectname:short)",
+      "refs/remotes/",
+    ]);
+    const remote = remoteOut
+      .split("\n")
+      .filter(Boolean)
+      .filter((line) => !line.includes("/HEAD"))
+      .map((line) => {
+        const [name, hash] = line.split("\x00");
+        return { name, hash };
+      });
+
+    return c.json({ current, local, remote });
+  } catch (err: any) {
+    return c.json(
+      { error: err.message || "Failed to list branches" },
+      500
+    );
+  }
+});
+
+// POST /checkout { dir, branch }
+git.post("/checkout", async (c) => {
+  const { dir: rel, branch } = await c.req.json();
+  if (!rel) return c.json({ error: "dir is required" }, 400);
+  if (!branch || typeof branch !== "string" || !branch.trim()) {
+    return c.json({ error: "branch is required" }, 400);
+  }
+
+  let dir: string;
+  try {
+    dir = resolveAndValidate(rel);
+  } catch {
+    return c.json({ error: "Path is outside workspace root" }, 403);
+  }
+
+  try {
+    const { stdout, stderr } = await run(dir, [
+      "checkout",
+      branch.trim(),
+    ]);
+    return c.json({ ok: true, output: (stdout + stderr).trim() });
+  } catch (err: any) {
+    const msg = err.stderr || err.message || "Checkout failed";
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// POST /create-branch { dir, name, from? }
+git.post("/create-branch", async (c) => {
+  const { dir: rel, name, from } = await c.req.json();
+  if (!rel) return c.json({ error: "dir is required" }, 400);
+  if (!name || typeof name !== "string" || !name.trim()) {
+    return c.json({ error: "branch name is required" }, 400);
+  }
+
+  let dir: string;
+  try {
+    dir = resolveAndValidate(rel);
+  } catch {
+    return c.json({ error: "Path is outside workspace root" }, 403);
+  }
+
+  try {
+    const args = ["checkout", "-b", name.trim()];
+    if (from && typeof from === "string" && from.trim()) {
+      args.push(from.trim());
+    }
+    const { stdout, stderr } = await run(dir, args);
+    return c.json({ ok: true, output: (stdout + stderr).trim() });
+  } catch (err: any) {
+    const msg = err.stderr || err.message || "Failed to create branch";
+    return c.json({ error: msg }, 500);
+  }
+});
+
 // POST /discard { dir, files }
 git.post("/discard", async (c) => {
   const { dir: rel, files } = await c.req.json();
