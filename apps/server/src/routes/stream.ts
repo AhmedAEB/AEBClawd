@@ -34,8 +34,8 @@ stream.get("/", (c) => {
 });
 
 stream.post("/prompt", async (c) => {
-  const { clientId, prompt, sessionId, workDir, model } = await c.req.json();
-  const ok = await handlePrompt(clientId, prompt, sessionId, workDir, model);
+  const { clientId, prompt, sessionId, workDir, model, images } = await c.req.json();
+  const ok = await handlePrompt(clientId, prompt, sessionId, workDir, model, images);
   return ok ? c.json({ ok: true }) : c.json({ error: "client not found" }, 404);
 });
 

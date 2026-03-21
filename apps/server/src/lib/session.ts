@@ -52,6 +52,7 @@ export async function handlePrompt(
   sessionId?: string,
   workDir?: string,
   model?: string,
+  images?: { data: string; mediaType: string }[],
 ): Promise<boolean> {
   const client = clients.get(clientId);
   if (!client) return false;
@@ -75,7 +76,7 @@ export async function handlePrompt(
     cwd = getWorkspacesRoot();
   }
 
-  const abortController = await runQuery({ prompt, resumeId, cwd, model }, {
+  const abortController = await runQuery({ prompt, resumeId, cwd, model, images }, {
     onMessage: (message: SDKMessage) => {
       if ("session_id" in message && message.session_id) {
         client.sessionId = message.session_id;
