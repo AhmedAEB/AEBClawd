@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { Markdown } from "@/components/markdown";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -606,15 +607,19 @@ export default function ChatView({
                 }`}
               >
                 <div
-                  className={`max-w-[80%] px-4 py-3 text-[14px] leading-relaxed whitespace-pre-wrap ${
+                  className={`max-w-[80%] px-4 py-3 text-[14px] leading-relaxed ${
                     msg.role === "user"
-                      ? "bg-fg font-medium text-void"
+                      ? "bg-fg font-medium text-void whitespace-pre-wrap"
                       : msg.role === "system"
-                        ? "border-2 border-fg text-fg"
+                        ? "border-2 border-fg text-fg whitespace-pre-wrap"
                         : "border border-edge text-fg-2"
                   }`}
                 >
-                  {msg.content}
+                  {msg.role === "assistant" ? (
+                    <Markdown content={msg.content} />
+                  ) : (
+                    msg.content
+                  )}
                 </div>
               </div>
             );
