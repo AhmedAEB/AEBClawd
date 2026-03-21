@@ -482,19 +482,19 @@ export default function Home() {
   };
 
   const eventAccents: Record<string, string> = {
-    init: "border-l-info text-info/80",
-    retry: "border-l-warn text-warn/80",
-    rate_limit: "border-l-warn text-warn/80",
-    thinking: "border-l-gold/60 text-gold/70",
-    tool_use: "border-l-info/60 text-info/80",
-    tool_result: "border-l-ok/60 text-ok/70",
-    tool_output: "border-l-ok/60 text-ok/70",
-    tool_error: "border-l-err text-err/80",
-    result: "border-l-ok text-ok/80",
-    error: "border-l-err text-err/80",
-    stderr: "border-l-err text-err/80",
-    raw: "border-l-fg-3/40 text-fg-3",
-    system: "border-l-fg-3/40 text-fg-3",
+    init: "border-l-fg text-fg-2",
+    retry: "border-l-fg text-fg-2",
+    rate_limit: "border-l-fg text-fg-2",
+    thinking: "border-l-fg-3 text-fg-3",
+    tool_use: "border-l-fg text-fg-2",
+    tool_result: "border-l-fg-3 text-fg-3",
+    tool_output: "border-l-fg-3 text-fg-3",
+    tool_error: "border-l-fg text-fg",
+    result: "border-l-fg text-fg-2",
+    error: "border-l-fg text-fg",
+    stderr: "border-l-fg text-fg",
+    raw: "border-l-fg-3 text-fg-3",
+    system: "border-l-fg-3 text-fg-3",
   };
 
   const eventLabels: Record<string, string> = {
@@ -515,23 +515,18 @@ export default function Home() {
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-void text-fg">
-      {/* Ambient glow */}
-      <div className="pointer-events-none fixed inset-0">
-        <div className="absolute left-1/2 top-0 h-[500px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/[0.015] blur-[100px]" />
-      </div>
-
       {/* Header */}
-      <header className="relative z-10 flex items-center justify-between border-b border-edge px-6 py-3">
+      <header className="relative z-10 flex items-center justify-between border-b-2 border-edge px-6 py-3">
         <div className="flex items-center gap-4">
-          <h1 className="font-display text-[15px] font-bold tracking-[-0.02em]">
+          <h1 className="font-display text-[15px] font-bold uppercase tracking-[0.1em]">
             AEBClawd
           </h1>
           <button
             onClick={toggleSessions}
-            className={`rounded-md px-2.5 py-1 text-[11px] font-semibold tracking-wide uppercase transition-all duration-200 ${
+            className={`px-2.5 py-1 text-[11px] font-semibold tracking-wide uppercase transition-all duration-200 ${
               showSessions
-                ? "bg-gold/10 text-gold"
-                : "text-fg-3 hover:text-fg-2"
+                ? "bg-fg text-void"
+                : "text-fg-3 hover:text-fg"
             }`}
           >
             Sessions
@@ -543,7 +538,7 @@ export default function Home() {
             <span className="text-fg-3">{statusInfo.model}</span>
           )}
           {statusInfo.permissionMode && (
-            <span className="rounded bg-warn/10 px-1.5 py-0.5 text-warn">
+            <span className="border border-edge px-1.5 py-0.5 text-fg-2">
               {statusInfo.permissionMode}
             </span>
           )}
@@ -553,16 +548,16 @@ export default function Home() {
             </span>
           )}
           {statusInfo.costUsd !== undefined && (
-            <span className="text-gold">
+            <span className="font-semibold text-fg">
               ${statusInfo.costUsd.toFixed(4)}
             </span>
           )}
           {sessionId && (
-            <span className="text-fg-3/40">{sessionId.slice(0, 8)}</span>
+            <span className="text-fg-3">{sessionId.slice(0, 8)}</span>
           )}
           <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              isConnected ? "bg-ok animate-pulse-dot" : "bg-err"
+            className={`h-2 w-2 ${
+              isConnected ? "bg-fg animate-pulse-dot" : "border border-fg"
             }`}
           />
         </div>
@@ -574,17 +569,17 @@ export default function Home() {
         {showSessions && (
           <>
             <div
-              className="absolute inset-0 z-10 bg-void/60 backdrop-blur-sm"
+              className="absolute inset-0 z-10 bg-fg/10"
               onClick={() => setShowSessions(false)}
             />
-            <aside className="absolute inset-y-0 left-0 z-20 flex w-80 animate-slide-in-left flex-col border-r border-edge bg-panel/95 backdrop-blur-xl">
-              <div className="flex items-center justify-between border-b border-edge px-5 py-3.5">
+            <aside className="absolute inset-y-0 left-0 z-20 flex w-80 animate-slide-in-left flex-col border-r-2 border-edge bg-void">
+              <div className="flex items-center justify-between border-b-2 border-edge px-5 py-3.5">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-fg-3">
                   Sessions
                 </span>
                 <button
                   onClick={startNewSession}
-                  className="rounded-md bg-gold/10 px-3 py-1 text-[11px] font-semibold text-gold transition-colors hover:bg-gold/20"
+                  className="bg-fg px-3 py-1 text-[11px] font-semibold text-void transition-colors hover:bg-fg-2"
                 >
                   New
                 </button>
@@ -592,7 +587,7 @@ export default function Home() {
               <div className="flex-1 overflow-y-auto">
                 {sessionsLoading ? (
                   <div className="flex items-center justify-center py-16">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-gold/20 border-t-gold" />
+                    <div className="h-4 w-4 animate-spin border-2 border-panel-3 border-t-fg" />
                   </div>
                 ) : sessionsList.length === 0 ? (
                   <div className="px-5 py-16 text-center text-xs text-fg-3">
@@ -620,9 +615,9 @@ export default function Home() {
                       <button
                         key={s.sessionId}
                         onClick={() => selectSession(s)}
-                        className={`group w-full text-left px-5 py-3 border-b border-edge/50 transition-all duration-150 ${
+                        className={`group w-full text-left px-5 py-3 border-b border-edge transition-all duration-150 ${
                           isActive
-                            ? "bg-gold/5 border-l-2 border-l-gold"
+                            ? "bg-panel-2 border-l-2 border-l-fg"
                             : "hover:bg-panel-2"
                         }`}
                       >
@@ -631,12 +626,12 @@ export default function Home() {
                         </div>
                         <div className="mt-1.5 flex items-center gap-2 text-[10px] text-fg-3">
                           {dirName && (
-                            <span className="rounded bg-panel-3/50 px-1.5 py-0.5 font-mono">
+                            <span className="border border-edge px-1.5 py-0.5 font-mono">
                               {dirName}
                             </span>
                           )}
                           {s.gitBranch && (
-                            <span className="rounded bg-panel-3/50 px-1.5 py-0.5 font-mono">
+                            <span className="border border-edge px-1.5 py-0.5 font-mono">
                               {s.gitBranch}
                             </span>
                           )}
@@ -657,15 +652,15 @@ export default function Home() {
             {historyLoading && (
               <div className="flex items-center justify-center pt-[30vh]">
                 <div className="flex items-center gap-3">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gold/20 border-t-gold" />
-                  <span className="text-sm text-fg-3">Loading session history...</span>
+                  <div className="h-4 w-4 animate-spin border-2 border-panel-3 border-t-fg" />
+                  <span className="text-sm text-fg-3">Loading...</span>
                 </div>
               </div>
             )}
 
             {messages.length === 0 && !historyLoading && (
               <div className="flex flex-col items-center justify-center pt-[30vh]">
-                <h2 className="animate-shimmer font-display text-2xl font-bold tracking-tight text-fg-3/50">
+                <h2 className="animate-shimmer font-display text-2xl font-bold uppercase tracking-[0.1em] text-fg-3">
                   What would you like to build?
                 </h2>
               </div>
@@ -680,7 +675,7 @@ export default function Home() {
                 return (
                   <div key={i} className="animate-fade-in">
                     <div
-                      className={`border-l-2 ${accent} rounded-r-md bg-panel/40 py-1.5 pl-3 pr-3 font-mono text-[11px] leading-relaxed`}
+                      className={`border-l-2 ${accent} bg-panel-2 py-1.5 pl-3 pr-3 font-mono text-[11px] leading-relaxed`}
                     >
                       <span className="mr-2 inline-block w-14 text-[10px] font-bold uppercase opacity-50">
                         {label}
@@ -701,12 +696,12 @@ export default function Home() {
                   }`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed whitespace-pre-wrap ${
+                    className={`max-w-[80%] px-4 py-3 text-[14px] leading-relaxed whitespace-pre-wrap ${
                       msg.role === "user"
-                        ? "bg-gold font-medium text-void"
+                        ? "bg-fg font-medium text-void"
                         : msg.role === "system"
-                          ? "border border-err/20 bg-err/10 text-err"
-                          : "bg-panel text-fg-2"
+                          ? "border-2 border-fg text-fg"
+                          : "border border-edge text-fg-2"
                     }`}
                   >
                     {msg.content}
@@ -718,17 +713,17 @@ export default function Home() {
             {isStreaming &&
               messages[messages.length - 1]?.role !== "assistant" && (
                 <div className="flex animate-fade-in justify-start">
-                  <div className="flex items-center gap-1.5 rounded-2xl bg-panel px-5 py-4">
+                  <div className="flex items-center gap-1.5 border border-edge px-5 py-4">
                     <span
-                      className="animate-bounce-dot h-1.5 w-1.5 rounded-full bg-gold"
+                      className="animate-bounce-dot h-1.5 w-1.5 bg-fg"
                       style={{ animationDelay: "0ms" }}
                     />
                     <span
-                      className="animate-bounce-dot h-1.5 w-1.5 rounded-full bg-gold"
+                      className="animate-bounce-dot h-1.5 w-1.5 bg-fg"
                       style={{ animationDelay: "160ms" }}
                     />
                     <span
-                      className="animate-bounce-dot h-1.5 w-1.5 rounded-full bg-gold"
+                      className="animate-bounce-dot h-1.5 w-1.5 bg-fg"
                       style={{ animationDelay: "320ms" }}
                     />
                   </div>
@@ -742,7 +737,7 @@ export default function Home() {
 
       {/* Tool approvals */}
       {pendingApprovals.length > 0 && (
-        <div className="relative z-10 border-t border-warn/20 bg-panel/80 px-6 py-3 backdrop-blur-lg">
+        <div className="relative z-10 border-t-2 border-edge bg-void px-6 py-3">
           <div className="mx-auto max-w-2xl space-y-2">
             {pendingApprovals.map((approval) => {
               const inputStr = JSON.stringify(approval.input, null, 2);
@@ -753,12 +748,12 @@ export default function Home() {
               return (
                 <div
                   key={approval.toolUseId}
-                  className="animate-fade-in rounded-xl border border-warn/20 bg-warn/5 p-4"
+                  className="animate-fade-in border-2 border-fg p-4"
                 >
-                  <div className="mb-2 text-[13px] font-semibold text-warn">
+                  <div className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-fg">
                     {approval.title || `Approve: ${approval.toolName}`}
                   </div>
-                  <pre className="mb-3 whitespace-pre-wrap break-all rounded-lg bg-void/40 p-2.5 font-mono text-[11px] text-fg-3">
+                  <pre className="mb-3 whitespace-pre-wrap break-all border border-edge bg-panel-2 p-2.5 font-mono text-[11px] text-fg-2">
                     {truncInput}
                   </pre>
                   <div className="flex gap-2">
@@ -766,7 +761,7 @@ export default function Home() {
                       onClick={() =>
                         respondToApproval(approval.toolUseId, true)
                       }
-                      className="rounded-lg bg-ok/10 px-4 py-1.5 text-[12px] font-semibold text-ok transition-colors hover:bg-ok/20"
+                      className="bg-fg px-4 py-1.5 text-[12px] font-semibold text-void transition-colors hover:bg-fg-2"
                     >
                       Allow
                     </button>
@@ -774,7 +769,7 @@ export default function Home() {
                       onClick={() =>
                         respondToApproval(approval.toolUseId, false)
                       }
-                      className="rounded-lg bg-err/10 px-4 py-1.5 text-[12px] font-semibold text-err transition-colors hover:bg-err/20"
+                      className="border-2 border-fg px-4 py-1.5 text-[12px] font-semibold text-fg transition-colors hover:bg-panel-2"
                     >
                       Deny
                     </button>
@@ -789,7 +784,7 @@ export default function Home() {
       {/* Input */}
       <footer className="relative z-10 px-6 pb-6 pt-2">
         <div className="mx-auto max-w-2xl">
-          <div className="flex items-end gap-2 rounded-2xl border border-edge bg-panel p-2 transition-all duration-200 focus-within:border-gold/30 focus-within:shadow-[0_0_30px_-10px_rgba(201,168,76,0.1)]">
+          <div className="flex items-end gap-2 border-2 border-edge bg-void p-2 transition-all duration-200 focus-within:border-fg">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -802,7 +797,7 @@ export default function Home() {
             {isStreaming ? (
               <button
                 onClick={abort}
-                className="shrink-0 rounded-xl bg-err/10 px-4 py-2 text-[13px] font-semibold text-err transition-colors hover:bg-err/20"
+                className="shrink-0 border-2 border-fg px-4 py-2 text-[13px] font-semibold text-fg transition-colors hover:bg-panel-2"
               >
                 Stop
               </button>
@@ -810,7 +805,7 @@ export default function Home() {
               <button
                 onClick={sendPrompt}
                 disabled={!input.trim() || !isConnected}
-                className="shrink-0 rounded-xl bg-gold px-4 py-2 text-[13px] font-semibold text-void transition-all hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-30"
+                className="shrink-0 bg-fg px-4 py-2 text-[13px] font-semibold text-void transition-all hover:bg-fg-2 disabled:cursor-not-allowed disabled:opacity-30"
               >
                 Send
               </button>

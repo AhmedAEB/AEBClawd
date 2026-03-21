@@ -2,29 +2,29 @@
 
 @theme inline {
   /* Surfaces */
-  --color-void: #08080A;
-  --color-panel: #111114;
-  --color-panel-2: #19191D;
-  --color-panel-3: #222228;
+  --color-void: #FFFFFF;
+  --color-panel: #FFFFFF;
+  --color-panel-2: #F5F5F5;
+  --color-panel-3: #EBEBEB;
 
   /* Borders */
-  --color-edge: #1E1E24;
-  --color-edge-2: #2C2C34;
+  --color-edge: #000000;
+  --color-edge-2: #000000;
 
   /* Foreground */
-  --color-fg: #EDECEA;
-  --color-fg-2: #9E9D9A;
-  --color-fg-3: #5C5B58;
+  --color-fg: #000000;
+  --color-fg-2: #333333;
+  --color-fg-3: #666666;
 
-  /* Accent — warm gold */
-  --color-gold: #C9A84C;
-  --color-gold-light: #D4B65E;
+  /* Accent — black */
+  --color-accent: #000000;
+  --color-accent-light: #333333;
 
   /* Semantic */
-  --color-ok: #4AAF82;
-  --color-err: #D95555;
-  --color-info: #5B8DEF;
-  --color-warn: #D4A84C;
+  --color-ok: #000000;
+  --color-err: #000000;
+  --color-info: #000000;
+  --color-warn: #000000;
 
   /* Fonts */
   --font-sans: var(--font-manrope);
@@ -40,22 +40,22 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1E1E24;
-  border-radius: 3px;
+  background: #000000;
+  border-radius: 0;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2C2C34;
+  background: #333333;
 }
 
 /* Selection */
 ::selection {
-  background: #C9A84C;
-  color: #08080A;
+  background: #000000;
+  color: #FFFFFF;
 }
 
 body {
-  background: #08080A;
-  color: #EDECEA;
+  background: #FFFFFF;
+  color: #000000;
 }
 
 /* Animations */
