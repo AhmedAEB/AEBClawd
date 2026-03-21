@@ -6,6 +6,7 @@ export interface RunQueryOptions {
   prompt: string;
   resumeId?: string;
   cwd: string;
+  model?: string;
 }
 
 export interface RunQueryCallbacks {
@@ -38,6 +39,7 @@ export async function runQuery(
           cwd: options.cwd,
           includePartialMessages: true,
           ...(options.resumeId ? { resume: options.resumeId } : {}),
+          ...(options.model ? { model: options.model } : {}),
           systemPrompt: { type: "preset", preset: "claude_code" },
           canUseTool: async (toolName, input, opts) => {
             if (toolName === "AskUserQuestion") {

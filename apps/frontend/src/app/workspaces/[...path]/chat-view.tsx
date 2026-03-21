@@ -87,10 +87,38 @@ export default function ChatView({
   }>({});
   const [historyLoading, setHistoryLoading] = useState(!isNewSession);
   const [scOpen, setScOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("");
+  const [availableModels, setAvailableModels] = useState<
+    { value: string; displayName: string; description: string }[]
+  >([]);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
   const clientIdRef = useRef(crypto.randomUUID());
   const eventSourceRef = useRef<EventSource | null>(null);
   const streamBufferRef = useRef("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/models`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setAvailableModels(data);
+          if (!selectedModel) setSelectedModel(data[0].value);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
+        setModelMenuOpen(false);
+      }
+    };
+    if (modelMenuOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [modelMenuOpen]);
 
   const pathSegments = relativePath.split("/").filter(Boolean);
   const dirName = pathSegments[pathSegments.length - 1] ?? "root";
@@ -473,6 +501,7 @@ export default function ChatView({
         prompt,
         sessionId: sessionId ?? undefined,
         workDir: relativePath,
+        model: selectedModel,
       }),
     });
   };
@@ -544,9 +573,47 @@ export default function ChatView({
         </nav>
 
         <div className="flex items-center gap-3 font-mono text-[11px]">
-          {statusInfo.model && (
-            <span className="text-fg-3">{statusInfo.model}</span>
-          )}
+          <div className="relative" ref={modelMenuRef}>
+            <button
+              onClick={() => setModelMenuOpen((v) => !v)}
+              className={`flex items-center gap-1.5 border-2 border-edge px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                modelMenuOpen ? "bg-fg text-void" : "text-fg hover:bg-panel-2"
+              }`}
+              disabled={isStreaming || availableModels.length === 0}
+            >
+              {availableModels.find((m) => m.value === selectedModel)?.displayName ?? (selectedModel || "...")}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
+                <path fillRule="evenodd" d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+              </svg>
+            </button>
+            {modelMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 border-2 border-edge bg-void">
+                {availableModels.map((m) => (
+                  <button
+                    key={m.value}
+                    onClick={() => {
+                      setSelectedModel(m.value);
+                      setModelMenuOpen(false);
+                    }}
+                    className={`group block w-full whitespace-nowrap px-4 py-2 text-left transition-colors ${
+                      selectedModel === m.value
+                        ? "bg-fg text-void"
+                        : "text-fg hover:bg-panel-2"
+                    }`}
+                  >
+                    <span className="block text-[11px] font-bold uppercase tracking-wider">
+                      {m.displayName}
+                    </span>
+                    <span className={`block text-[10px] font-normal normal-case tracking-normal ${
+                      selectedModel === m.value ? "opacity-60" : "text-fg-3"
+                    }`}>
+                      {m.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {statusInfo.permissionMode && (
             <span className="border border-edge px-1.5 py-0.5 text-fg-2">
               {statusInfo.permissionMode}
