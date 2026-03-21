@@ -41,7 +41,7 @@ export async function runQuery(
           systemPrompt: { type: "preset", preset: "claude_code" },
           canUseTool: async (toolName, input, opts) => {
             if (toolName === "AskUserQuestion") {
-              return { behavior: "allow" };
+              return { behavior: "allow", updatedInput: input };
             }
             return callbacks.onToolApproval(toolName, input, opts);
           },

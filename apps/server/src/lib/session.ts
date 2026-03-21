@@ -83,7 +83,7 @@ export async function handlePrompt(
     },
     onToolApproval: (toolName, input, opts) => {
       return new Promise((resolve) => {
-        client.pendingApprovals.set(opts.toolUseID, { resolve });
+        client.pendingApprovals.set(opts.toolUseID, { resolve, input: input as Record<string, unknown> });
         client.sendEvent("tool_approval", {
           toolName,
           input,
@@ -125,7 +125,7 @@ export function handleToolApproval(
   client.pendingApprovals.delete(toolUseId);
   pending.resolve(
     approved
-      ? { behavior: "allow" }
+      ? { behavior: "allow", updatedInput: pending.input }
       : { behavior: "deny", message: reason || "User denied" },
   );
 }
