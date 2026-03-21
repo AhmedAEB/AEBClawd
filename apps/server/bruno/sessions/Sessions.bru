@@ -1,0 +1,16 @@
+meta {
+  name: Sessions
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/sessions
+  body: none
+  auth: none
+}
+
+params:query {
+  ~dir: 
+  ~limit: 50
+}

@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx scripts/generate-bruno.ts && tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "generate:bruno": "tsx scripts/generate-bruno.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.80",

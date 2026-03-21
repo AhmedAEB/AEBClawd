@@ -1,0 +1,16 @@
+meta {
+  name: Sessions by id Messages
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/sessions/:id/messages
+  body: none
+  auth: none
+}
+
+params:query {
+  ~limit: 200
+  ~offset: 0
+}

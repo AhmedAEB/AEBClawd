@@ -1,0 +1,20 @@
+meta {
+  name: Stream Tool Approval
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/stream/tool-approval
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "clientId": "",
+    "toolUseId": "",
+    "approved": "",
+    "reason": ""
+  }
+}
