@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Markdown } from "@/components/markdown";
+import { VoiceProvider, VoiceButton, VoicePanel } from "@/components/voice-mode";
 import SourceControlSidebar from "./source-control";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -622,6 +623,13 @@ export default function ChatView({
     }
   };
 
+  const handleVoiceMessage = useCallback(
+    (text: string, role: "user" | "assistant") => {
+      setMessages((prev) => [...prev, { role, content: text, timestamp: Date.now() }]);
+    },
+    [],
+  );
+
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
       {/* Fullscreen drop overlay */}
@@ -898,7 +906,15 @@ export default function ChatView({
         </div>
       )}
 
-      {/* Input */}
+      {/* Voice + Input */}
+      <VoiceProvider
+        clientId={clientIdRef.current}
+        sessionId={sessionId ?? null}
+        relativePath={relativePath}
+        selectedModel={selectedModel}
+        onVoiceMessage={handleVoiceMessage}
+      >
+      <VoicePanel />
       <footer className="px-6 pb-6 pt-2">
         <div className="mx-auto max-w-2xl">
           <div
@@ -947,6 +963,7 @@ export default function ChatView({
                   <path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909-4.97-4.969a.75.75 0 0 0-1.06 0L2.5 11.06ZM12.75 7a1.25 1.25 0 1 1 2.5 0 1.25 1.25 0 0 1-2.5 0Z" clipRule="evenodd" />
                 </svg>
               </button>
+              <VoiceButton isConnected={isConnected} isStreaming={isStreaming} />
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -977,6 +994,7 @@ export default function ChatView({
           </div>
         </div>
       </footer>
+      </VoiceProvider>
       </div>
 
       {/* Source control sidebar — full overlay on mobile, inline panel on desktop */}

@@ -1,0 +1,77 @@
+# AEBClawd Voice Mode — Docker Compose
+#
+# GPU (production):
+#   docker compose --profile gpu up -d
+#
+# CPU (development / no GPU):
+#   docker compose --profile cpu up -d
+#
+# Then set in your .env:
+#   STT_URL=http://localhost:8001
+#   TTS_URL=http://localhost:8880
+
+services:
+  # ── Speech-to-Text (GPU) ─────────────────────────────────────
+  stt-gpu:
+    build:
+      context: ./docker/stt
+      target: gpu
+    profiles: [gpu]
+    ports:
+      - "8001:8001"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - huggingface-cache:/root/.cache/huggingface
+    environment:
+      - WHISPER_MODEL=Systran/faster-distil-whisper-small.en
+      - WHISPER_DEVICE=cuda
+      - WHISPER_COMPUTE_TYPE=int8
+    restart: unless-stopped
+
+  # ── Speech-to-Text (CPU) ─────────────────────────────────────
+  stt-cpu:
+    build:
+      context: ./docker/stt
+      target: cpu
+    profiles: [cpu]
+    ports:
+      - "8001:8001"
+    volumes:
+      - huggingface-cache:/root/.cache/huggingface
+    environment:
+      - WHISPER_MODEL=Systran/faster-distil-whisper-small.en
+      - WHISPER_DEVICE=cpu
+      - WHISPER_COMPUTE_TYPE=int8
+    restart: unless-stopped
+
+  # ── Text-to-Speech (GPU) ─────────────────────────────────────
+  tts-gpu:
+    image: ghcr.io/remsky/kokoro-fastapi-gpu:latest
+    profiles: [gpu]
+    ports:
+      - "8880:8880"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  # ── Text-to-Speech (CPU) ─────────────────────────────────────
+  tts-cpu:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    profiles: [cpu]
+    ports:
+      - "8880:8880"
+    restart: unless-stopped
+
+volumes:
+  huggingface-cache:

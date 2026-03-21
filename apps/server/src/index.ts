@@ -1,4 +1,5 @@
 import { serve } from "@hono/node-server";
+import { createNodeWebSocket } from "@hono/node-ws";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { env } from "./lib/env.js";
@@ -8,10 +9,16 @@ import stream from "./routes/stream.js";
 import filesystem from "./routes/filesystem.js";
 import git from "./routes/git.js";
 import models from "./routes/models.js";
+import { createVoiceHandler } from "./routes/voice.js";
 
 const app = new Hono();
+const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
-app.use("*", cors());
+// WebSocket route MUST be mounted before cors() middleware
+app.get("/ws/voice", createVoiceHandler(upgradeWebSocket));
+
+// CORS for HTTP API routes only
+app.use("/api/*", cors());
 
 app.route("/api/sessions", sessions);
 app.route("/api/stream", stream);
@@ -21,6 +28,8 @@ app.route("/api/models", models);
 
 app.get("/health", (c) => c.json({ status: "ok" }));
 
-serve({ fetch: app.fetch, port: env.PORT }, () => {
+const server = serve({ fetch: app.fetch, port: env.PORT }, () => {
   logger.info(`Server listening on port ${env.PORT}`);
 });
+
+injectWebSocket(server);
