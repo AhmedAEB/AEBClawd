@@ -13,12 +13,20 @@ function encodePath(p: string): string {
 
 type MessageRole = "user" | "assistant" | "system" | "event";
 
+interface ImageAttachment {
+  data: string; // base64 (no prefix)
+  mediaType: string;
+  name: string;
+  preview: string; // data URL for display
+}
+
 interface Message {
   role: MessageRole;
   content: string;
   timestamp: number;
   eventType?: string;
   meta?: Record<string, any>;
+  images?: ImageAttachment[];
 }
 
 interface ToolApprovalRequest {
@@ -92,7 +100,11 @@ export default function ChatView({
     { value: string; displayName: string; description: string }[]
   >([]);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const clientIdRef = useRef(crypto.randomUUID());
   const eventSourceRef = useRef<EventSource | null>(null);
   const streamBufferRef = useRef("");
@@ -130,6 +142,72 @@ export default function ChatView({
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+
+  const processFiles = useCallback((files: FileList | File[]) => {
+    for (const file of Array.from(files)) {
+      if (!ACCEPTED_TYPES.includes(file.type)) continue;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        const base64 = dataUrl.split(",")[1];
+        setAttachedImages((prev) => [
+          ...prev,
+          { data: base64, mediaType: file.type, name: file.name, preview: dataUrl },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    }
+  }, []);
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+      if (imageFiles.length > 0) processFiles(imageFiles);
+    },
+    [processFiles]
+  );
+
+  useEffect(() => {
+    const onDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounterRef.current++;
+      if (e.dataTransfer?.types.includes("Files")) setIsDragging(true);
+    };
+    const onDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounterRef.current--;
+      if (dragCounterRef.current === 0) setIsDragging(false);
+    };
+    const onDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+      if (e.dataTransfer?.files) processFiles(e.dataTransfer.files);
+    };
+    window.addEventListener("dragenter", onDragEnter);
+    window.addEventListener("dragleave", onDragLeave);
+    window.addEventListener("dragover", onDragOver);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragenter", onDragEnter);
+      window.removeEventListener("dragleave", onDragLeave);
+      window.removeEventListener("dragover", onDragOver);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, [processFiles]);
 
   // Update the URL to the real session path once we have an ID (without re-mounting)
   useEffect(() => {
@@ -482,15 +560,20 @@ export default function ChatView({
 
   const sendPrompt = async (directPrompt?: string) => {
     const prompt = directPrompt?.trim() || input.trim();
-    if (!prompt || !isConnected || isStreaming) return;
+    const images = directPrompt ? [] : attachedImages;
+    if ((!prompt && images.length === 0) || !isConnected || isStreaming) return;
 
-    if (!directPrompt) setInput("");
+    const effectivePrompt = prompt || "What is in this image?";
+    if (!directPrompt) {
+      setInput("");
+      setAttachedImages([]);
+    }
     setIsStreaming(true);
     streamBufferRef.current = "";
 
     setMessages((prev) => [
       ...prev,
-      { role: "user", content: prompt, timestamp: Date.now() },
+      { role: "user", content: effectivePrompt, timestamp: Date.now(), images: images.length > 0 ? images : undefined },
     ]);
 
     await fetch(`${API_URL}/api/stream/prompt`, {
@@ -498,10 +581,13 @@ export default function ChatView({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         clientId: clientIdRef.current,
-        prompt,
+        prompt: effectivePrompt,
         sessionId: sessionId ?? undefined,
         workDir: relativePath,
         model: selectedModel,
+        ...(images.length > 0 && {
+          images: images.map((img) => ({ data: img.data, mediaType: img.mediaType })),
+        }),
       }),
     });
   };
@@ -537,7 +623,18 @@ export default function ChatView({
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="relative flex h-full flex-col overflow-hidden">
+      {/* Fullscreen drop overlay */}
+      {isDragging && (
+        <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center border-4 border-dashed border-fg bg-void/80">
+          <div className="text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="mx-auto mb-3 h-10 w-10 text-fg">
+              <path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909-4.97-4.969a.75.75 0 0 0-1.06 0L2.5 11.06ZM12.75 7a1.25 1.25 0 1 1 2.5 0 1.25 1.25 0 0 1-2.5 0Z" clipRule="evenodd" />
+            </svg>
+            <p className="font-display text-lg font-bold uppercase tracking-widest text-fg">Drop image</p>
+          </div>
+        </div>
+      )}
       {/* Sub-header */}
       <div className="flex items-center justify-between border-b border-edge px-6 py-2">
         <nav className="flex items-center gap-1 text-[11px] font-mono text-fg-3">
@@ -709,6 +806,18 @@ export default function ChatView({
                         : "border border-edge text-fg-2"
                   }`}
                 >
+                  {msg.role === "user" && msg.images && msg.images.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {msg.images.map((img, j) => (
+                        <img
+                          key={j}
+                          src={img.preview}
+                          alt={img.name}
+                          className="max-h-40 max-w-[200px] border border-void/20 object-contain"
+                        />
+                      ))}
+                    </div>
+                  )}
                   {msg.role === "assistant" ? (
                     <Markdown content={msg.content} />
                   ) : (
@@ -792,32 +901,79 @@ export default function ChatView({
       {/* Input */}
       <footer className="px-6 pb-6 pt-2">
         <div className="mx-auto max-w-2xl">
-          <div className="flex items-end gap-2 border-2 border-edge bg-void p-2 transition-all duration-200 focus-within:border-fg">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={isConnected ? "Message Claude..." : "Connecting..."}
-              disabled={!isConnected}
-              rows={1}
-              className="flex-1 resize-none bg-transparent px-3 py-2 text-[14px] text-fg outline-none placeholder:text-fg-3 disabled:opacity-40"
-            />
-            {isStreaming ? (
-              <button
-                onClick={abort}
-                className="shrink-0 border-2 border-fg px-4 py-2 text-[13px] font-semibold text-fg transition-colors hover:bg-panel-2"
-              >
-                Stop
-              </button>
-            ) : (
-              <button
-                onClick={() => sendPrompt()}
-                disabled={!input.trim() || !isConnected}
-                className="shrink-0 bg-fg px-4 py-2 text-[13px] font-semibold text-void transition-all hover:bg-fg-2 disabled:cursor-not-allowed disabled:opacity-30"
-              >
-                Send
-              </button>
+          <div
+            className="border-2 border-edge bg-void p-2 transition-all duration-200 focus-within:border-fg"
+          >
+            {attachedImages.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-2 px-1">
+                {attachedImages.map((img, i) => (
+                  <div key={i} className="group relative">
+                    <img
+                      src={img.preview}
+                      alt={img.name}
+                      className="h-16 w-16 border border-edge object-cover"
+                    />
+                    <button
+                      onClick={() => setAttachedImages((prev) => prev.filter((_, j) => j !== i))}
+                      className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center bg-fg text-[10px] leading-none text-void opacity-0 transition-opacity group-hover:opacity-100"
+                      aria-label="Remove image"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
+            <div className="flex items-end gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files) processFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!isConnected || isStreaming}
+                className="shrink-0 p-2 text-fg-3 transition-colors hover:text-fg disabled:opacity-30"
+                aria-label="Attach image"
+                title="Attach image"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                  <path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909-4.97-4.969a.75.75 0 0 0-1.06 0L2.5 11.06ZM12.75 7a1.25 1.25 0 1 1 2.5 0 1.25 1.25 0 0 1-2.5 0Z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                placeholder={isConnected ? "Message Claude..." : "Connecting..."}
+                disabled={!isConnected}
+                rows={1}
+                className="flex-1 resize-none bg-transparent px-3 py-2 text-[14px] text-fg outline-none placeholder:text-fg-3 disabled:opacity-40"
+              />
+              {isStreaming ? (
+                <button
+                  onClick={abort}
+                  className="shrink-0 border-2 border-fg px-4 py-2 text-[13px] font-semibold text-fg transition-colors hover:bg-panel-2"
+                >
+                  Stop
+                </button>
+              ) : (
+                <button
+                  onClick={() => sendPrompt()}
+                  disabled={(!input.trim() && attachedImages.length === 0) || !isConnected}
+                  className="shrink-0 bg-fg px-4 py-2 text-[13px] font-semibold text-void transition-all hover:bg-fg-2 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  Send
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </footer>

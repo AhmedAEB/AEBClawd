@@ -1,0 +1,17 @@
+meta {
+  name: Git Pull
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/git/pull
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "dir: rel": ""
+  }
+}
