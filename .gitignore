@@ -38,5 +38,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-.claude/settings.json
-apps/server/bruno

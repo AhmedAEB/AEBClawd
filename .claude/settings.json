@@ -1,0 +1,87 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(timeout 10 gcloud alpha builds repositories list:*)",
+      "Bash(gcloud alpha builds repositories list:*)",
+      "Bash(./pre-apply-checks.sh)",
+      "Bash(gcloud compute firewall-rules:*)",
+      "Bash(gcloud compute networks delete:*)",
+      "Bash(gcloud compute networks vpc-access connectors list:*)",
+      "Bash(gcloud compute network-endpoint-groups list:*)",
+      "Bash(gcloud sql instances list:*)",
+      "Bash(gcloud redis instances list:*)",
+      "Bash(gcloud builds triggers list:*)",
+      "Bash(gh run view:*)",
+      "Bash(terraform plan:*)",
+      "Bash(terraform apply:*)",
+      "Bash(terraform output:*)",
+      "Bash(terraform show:*)",
+      "Bash(gcloud projects add-iam-policy-binding:*)",
+      "Bash(gh run rerun:*)",
+      "Bash(gh run:*)",
+      "Bash(gcloud logs read:*)",
+      "Bash(gcloud logging read:*)",
+      "Bash(gcloud run domain-mappings list:*)",
+      "Bash(pnpm db:push:*)",
+      "Bash(node test-loop-api.js:*)",
+      "Bash(node:*)",
+      "Bash(chmod:*)",
+      "Bash(LOOP_API_KEY=dd210fa6-1700-4de2-8554-333176134d4c LOOP_ENTITY_ID=07d31b98-3389-4ede-b54d-7c8d8ef53f35 node:*)",
+      "Read(//Users/yangocean/Documents/Cache/status/**)",
+      "Read(//Users/yangocean/Documents/Cache/LoopDocumentation/**)",
+      "Read(//Users/yangocean/Documents/Cache/pricing_doc/**)",
+      "Bash(git log:*)",
+      "Bash(git merge-base:*)",
+      "Bash(find:*)",
+      "Bash(git merge:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh api:*)",
+      "Bash(cat:*)",
+      "Bash(pnpm frontend:serve:*)",
+      "Bash(npx tsc:*)",
+      "Bash(/opt/homebrew/bin/npx tsc --noEmit scripts/migration/21_reprocess_all_seeds.ts)",
+      "Bash(/opt/homebrew/bin/npx tsx scripts/migration/test-jina-limit.ts)",
+      "Bash(gh pr diff:*)",
+      "Bash(pnpm add:*)",
+      "Bash(/opt/homebrew/bin/pnpm add @google-cloud/storage)",
+      "Bash(/usr/local/bin/pnpm add:*)",
+      "Bash(export PATH=\"$HOME/.nvm/versions/node/v20.18.3/bin:/usr/local/bin:/usr/bin:/bin\")",
+      "Bash(psql:*)",
+      "WebFetch(domain:docs.railway.com)",
+      "Bash(git checkout:*)",
+      "Bash(git show:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "chrome-devtools"
+  ],
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Glass.aiff"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Glass.aiff"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "code-simplifier@claude-plugins-official": true
+  }
+}
