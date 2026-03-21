@@ -1,0 +1,15 @@
+meta {
+  name: Git Log
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/git/log
+  body: none
+  auth: none
+}
+
+params:query {
+  ~limit: 50
+}

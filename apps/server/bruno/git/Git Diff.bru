@@ -1,0 +1,16 @@
+meta {
+  name: Git Diff
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/git/diff
+  body: none
+  auth: none
+}
+
+params:query {
+  ~file: 
+  ~staged: 
+}

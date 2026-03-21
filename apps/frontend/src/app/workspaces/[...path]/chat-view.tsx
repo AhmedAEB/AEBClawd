@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Markdown } from "@/components/markdown";
+import SourceControlSidebar from "./source-control";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -85,6 +86,7 @@ export default function ChatView({
     permissionMode?: string;
   }>({});
   const [historyLoading, setHistoryLoading] = useState(!isNewSession);
+  const [scOpen, setScOpen] = useState(false);
   const clientIdRef = useRef(crypto.randomUUID());
   const eventSourceRef = useRef<EventSource | null>(null);
   const streamBufferRef = useRef("");
@@ -100,6 +102,17 @@ export default function ChatView({
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Update the URL to the real session path once we have an ID (without re-mounting)
+  useEffect(() => {
+    if (isNewSession && sessionId) {
+      window.history.replaceState(
+        null,
+        "",
+        `/workspaces/${encodePath(relativePath)}/sessions/${sessionId}`
+      );
+    }
+  }, [isNewSession, sessionId, relativePath]);
 
   // Load session history
   useEffect(() => {
@@ -233,6 +246,7 @@ export default function ChatView({
           const toolCount = data.tools?.length ?? 0;
           const mcpServers: any[] = data.mcp_servers ?? [];
           const connectedMcp = mcpServers.filter((s: any) => s.status === "connected");
+          if (data.session_id) setSessionId(data.session_id);
           setStatusInfo((prev) => ({
             ...prev,
             model: data.model,
@@ -438,11 +452,11 @@ export default function ChatView({
     };
   }, [connect]);
 
-  const sendPrompt = async () => {
-    if (!input.trim() || !isConnected || isStreaming) return;
+  const sendPrompt = async (directPrompt?: string) => {
+    const prompt = directPrompt?.trim() || input.trim();
+    if (!prompt || !isConnected || isStreaming) return;
 
-    const prompt = input.trim();
-    setInput("");
+    if (!directPrompt) setInput("");
     setIsStreaming(true);
     streamBufferRef.current = "";
 
@@ -553,9 +567,22 @@ export default function ChatView({
               isConnected ? "bg-fg animate-pulse-dot" : "border border-fg"
             }`}
           />
+          <button
+            onClick={() => setScOpen((v) => !v)}
+            className={`ml-1 p-1 transition-colors ${scOpen ? "bg-fg text-void" : "text-fg-3 hover:text-fg"}`}
+            aria-label="Toggle source control"
+            title="Source Control"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+              <path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.5 2.5 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Z" />
+            </svg>
+          </button>
         </div>
       </div>
 
+      <div className="flex flex-1 overflow-hidden">
+      {/* Chat column */}
+      <div className="flex flex-1 flex-col overflow-hidden">
       {/* Messages */}
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl space-y-3 px-6 py-6">
@@ -717,7 +744,7 @@ export default function ChatView({
               </button>
             ) : (
               <button
-                onClick={sendPrompt}
+                onClick={() => sendPrompt()}
                 disabled={!input.trim() || !isConnected}
                 className="shrink-0 bg-fg px-4 py-2 text-[13px] font-semibold text-void transition-all hover:bg-fg-2 disabled:cursor-not-allowed disabled:opacity-30"
               >
@@ -727,6 +754,24 @@ export default function ChatView({
           </div>
         </div>
       </footer>
+      </div>
+
+      {/* Source control sidebar — full overlay on mobile, inline panel on desktop */}
+      {scOpen && (
+        <div className="fixed inset-0 z-40 bg-void md:static md:inset-auto md:z-auto md:w-[360px] md:shrink-0 md:border-l-2 md:border-edge">
+          <SourceControlSidebar
+            relativePath={relativePath}
+            onClose={() => setScOpen(false)}
+            onGenerateMessage={() =>
+              sendPrompt(
+                "Create a git commit for the currently staged changes, do not stage anything other than what is staged. Write a good conventional commit message yourself and commit it directly. Do not ask me for the message, just do it."
+              )
+            }
+            canGenerate={isConnected && !isStreaming}
+          />
+        </div>
+      )}
+      </div>
     </div>
   );
 }
