@@ -5,6 +5,10 @@ import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+function encodePath(p: string): string {
+  return p.split("/").map(encodeURIComponent).join("/");
+}
+
 interface DirEntry {
   name: string;
   isDirectory: boolean;
@@ -67,11 +71,11 @@ export default function FileBrowser({ relativePath }: { relativePath: string }) 
       <div className="mx-auto w-full max-w-2xl px-6 py-8">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-1 text-[11px] font-mono text-fg-3">
-          <Link href="/workspaces" className="hover:text-fg transition-colors">
-            /
+          <Link href="/workspaces" className="hover:text-fg transition-colors" aria-label="Home">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" /></svg>
           </Link>
           {pathSegments.map((seg, i) => {
-            const href = `/workspaces/${pathSegments.slice(0, i + 1).join("/")}`;
+            const href = `/workspaces/${pathSegments.slice(0, i + 1).map(encodeURIComponent).join("/")}`;
             const isLast = i === pathSegments.length - 1;
             return (
               <span key={i} className="flex items-center gap-1">
@@ -94,7 +98,7 @@ export default function FileBrowser({ relativePath }: { relativePath: string }) 
               {dirName}
             </h2>
             <Link
-              href={`/workspaces/${relativePath}/sessions`}
+              href={`/workspaces/${encodePath(relativePath)}/sessions`}
               className="bg-fg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-void transition-colors hover:bg-fg-2"
             >
               Open Sessions
@@ -151,13 +155,13 @@ export default function FileBrowser({ relativePath }: { relativePath: string }) 
                 className="group flex items-center border-b border-edge transition-colors hover:bg-panel-2"
               >
                 <Link
-                  href={`/workspaces/${relativePath}/${entry.name}`}
+                  href={`/workspaces/${encodePath(relativePath)}/${encodeURIComponent(entry.name)}`}
                   className="flex-1 px-4 py-3 text-[13px] text-fg-2 group-hover:text-fg"
                 >
                   {entry.name}
                 </Link>
                 <Link
-                  href={`/workspaces/${relativePath}/${entry.name}/sessions`}
+                  href={`/workspaces/${encodePath(relativePath)}/${encodeURIComponent(entry.name)}/sessions`}
                   className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-fg-3 transition-colors hover:text-fg"
                 >
                   Sessions

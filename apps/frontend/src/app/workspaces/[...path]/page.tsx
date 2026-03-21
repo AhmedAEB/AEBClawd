@@ -36,7 +36,8 @@ export default function CatchAllPage({
 }: {
   params: Promise<{ path: string[] }>;
 }) {
-  const { path: segments } = use(params);
+  const { path: rawSegments } = use(params);
+  const segments = rawSegments.map(decodeURIComponent);
   const { mode, dirSegments, sessionId } = parsePath(segments);
   const relativePath = dirSegments.join("/");
 

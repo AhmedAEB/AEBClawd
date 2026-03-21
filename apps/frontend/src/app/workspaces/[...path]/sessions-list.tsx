@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+function encodePath(p: string): string {
+  return p.split("/").map(encodeURIComponent).join("/");
+}
+
 interface SessionInfo {
   sessionId: string;
   summary: string;
@@ -45,7 +49,7 @@ export default function SessionsList({ relativePath }: { relativePath: string })
   }, [fetchSessions]);
 
   const startNewSession = () => {
-    router.push(`/workspaces/${relativePath}/sessions/new`);
+    router.push(`/workspaces/${encodePath(relativePath)}/sessions/new`);
   };
 
   return (
@@ -53,11 +57,11 @@ export default function SessionsList({ relativePath }: { relativePath: string })
       <div className="mx-auto w-full max-w-2xl px-6 py-8">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-1 text-[11px] font-mono text-fg-3">
-          <Link href="/workspaces" className="hover:text-fg transition-colors">
-            /
+          <Link href="/workspaces" className="hover:text-fg transition-colors" aria-label="Home">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" /></svg>
           </Link>
           {pathSegments.map((seg, i) => {
-            const href = `/workspaces/${pathSegments.slice(0, i + 1).join("/")}`;
+            const href = `/workspaces/${pathSegments.slice(0, i + 1).map(encodeURIComponent).join("/")}`;
             return (
               <span key={i} className="flex items-center gap-1">
                 <span>/</span>
@@ -113,7 +117,7 @@ export default function SessionsList({ relativePath }: { relativePath: string })
               return (
                 <Link
                   key={s.sessionId}
-                  href={`/workspaces/${relativePath}/sessions/${s.sessionId}`}
+                  href={`/workspaces/${encodePath(relativePath)}/sessions/${s.sessionId}`}
                   className="group block w-full border-b border-edge px-4 py-3 text-left transition-colors hover:bg-panel-2"
                 >
                   <div className="text-[13px] leading-snug text-fg-2 group-hover:text-fg line-clamp-2">
