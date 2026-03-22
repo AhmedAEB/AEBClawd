@@ -8,7 +8,8 @@
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.anonymous.mobile"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +20,10 @@
       },
       "predictiveBackGestureEnabled": false
     },
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "plugins": [
       "expo-router",
       [
