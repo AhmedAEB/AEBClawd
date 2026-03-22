@@ -11,7 +11,7 @@
 
 **A self-hosted web interface for Claude Code — use it from anywhere, on any device.**
 
-[Getting Started](#getting-started) · [Features](#features) · [API Reference](#api-endpoints) · [Configuration](#configuration)
+[Getting Started](#getting-started) · [Features](#features) · [API Reference](#api-endpoints) · [Voice Mode](#voice-mode) · [Configuration](#configuration)
 
 </div>
 
@@ -19,7 +19,7 @@
 
 ## Overview
 
-AEBClawd lets you interact with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) through a browser. It provides real-time streaming chat, workspace management, session persistence, and tool approval workflows — all wrapped in a minimal, brutalist UI.
+AEBClawd lets you interact with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) through a browser, mobile app, or chat platform. It provides real-time streaming chat, workspace management, session persistence, git operations, voice mode, and tool approval workflows — all wrapped in a minimal, brutalist UI.
 
 ## Features
 
@@ -27,6 +27,10 @@ AEBClawd lets you interact with [Claude Code](https://docs.anthropic.com/en/docs
 - **Workspace management** — Browse, create, and organize project directories
 - **Session persistence** — Save, resume, and review past conversations with full history
 - **Tool approval** — Approve or deny Claude's tool usage in real-time, with optional input modification
+- **Git integration** — Stage, commit, push, pull, branch, diff, and view status from the UI
+- **Voice mode** — Speech-to-Text (Whisper) and Text-to-Speech (Kokoro) via WebSocket
+- **Mobile app** — iOS and Android support via Expo / React Native
+- **Multi-platform bots** — Deploy Claude to Slack, Discord, Teams, Telegram, and GitHub
 - **Markdown rendering** — Rich display of assistant responses with code blocks, tables, and GFM support
 - **Minimalist UI** — Black and white brutalist design, sharp corners, no visual noise
 
@@ -37,6 +41,9 @@ AEBClawd lets you interact with [Claude Code](https://docs.anthropic.com/en/docs
 | Frontend | Next.js 16, React 19, Tailwind CSS 4, TypeScript |
 | Backend | Node.js, Hono, TypeScript |
 | AI | Anthropic Claude Agent SDK |
+| Mobile | Expo 55, React Native 0.83 |
+| Bots | Slack, Discord, Teams, Telegram, GitHub (via chat-adapter) |
+| Voice | Whisper STT, Kokoro TTS (Docker) |
 | Monorepo | pnpm workspaces |
 
 ## Prerequisites
@@ -44,6 +51,8 @@ AEBClawd lets you interact with [Claude Code](https://docs.anthropic.com/en/docs
 - [Node.js](https://nodejs.org/) (v20+)
 - [pnpm](https://pnpm.io/) (v9+)
 - An [Anthropic API key](https://console.anthropic.com/)
+- [Docker](https://www.docker.com/) (optional, for voice mode)
+- [Expo CLI](https://docs.expo.dev/) (optional, for mobile development)
 
 ## Getting Started
 
@@ -80,18 +89,22 @@ export ANTHROPIC_API_KEY="your-api-key"
 pnpm dev
 ```
 
-This starts both servers concurrently:
+This starts the frontend, server, and bot concurrently:
 
 | Service | URL |
 |---------|-----|
 | Frontend | `http://localhost:3000` |
 | Backend | `http://localhost:3001` |
 
-You can also run them individually:
+You can also run services individually:
 
 ```bash
-pnpm frontend:dev   # Frontend only
-pnpm server:dev     # Backend only
+pnpm frontend:dev     # Frontend only
+pnpm server:dev       # Backend only
+pnpm bot:dev          # Bot only
+pnpm mobile:dev       # Mobile (Expo)
+pnpm mobile:ios       # Build and run on iOS
+pnpm mobile:android   # Build and run on Android
 ```
 
 ### 5. Build for production
@@ -113,36 +126,124 @@ cd apps/frontend && pnpm start
 ```
 AEBClawd/
 ├── apps/
-│   ├── frontend/          # Next.js application
+│   ├── frontend/             # Next.js web application
 │   │   └── src/
 │   │       ├── app/
-│   │       │   ├── workspaces/   # Workspace routes (browse, sessions, chat)
-│   │       │   └── globals.css   # Theme and design tokens
-│   │       └── components/       # Shared components
-│   └── server/            # Hono API server
-│       └── src/
-│           ├── lib/              # Core modules (claude, session, env, paths)
-│           └── routes/           # API routes (stream, sessions, filesystem)
-├── assets/                # Logo and static assets
-├── CLAUDE.md              # Project guidelines and design standards
-├── package.json           # Root workspace configuration
+│   │       │   └── workspaces/    # Workspace routes (browse, sessions, chat)
+│   │       └── components/        # Shared UI components
+│   ├── server/               # Hono API server
+│   │   └── src/
+│   │       ├── lib/               # Core modules (claude, session, git, voice, tts, stt)
+│   │       └── routes/            # API routes (stream, sessions, filesystem, git, voice, models)
+│   ├── mobile/               # Expo / React Native app (iOS & Android)
+│   └── bot/                  # Multi-platform chatbot (Slack, Discord, Teams, Telegram, GitHub)
+├── packages/
+│   └── core/                 # Shared library (Claude SDK wrapper, paths, env, logger)
+├── docker/
+│   └── stt/                  # Speech-to-Text Docker image (Whisper)
+├── docker-compose.yml        # Voice services (STT & TTS, GPU/CPU variants)
+├── CLAUDE.md                 # Project guidelines and design standards
+├── package.json              # Root workspace configuration
 └── pnpm-workspace.yaml
 ```
 
 ## API Endpoints
 
+### Stream
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/health` | Health check |
 | `GET` | `/api/stream` | Establish SSE connection |
 | `POST` | `/api/stream/prompt` | Send a prompt to Claude |
 | `POST` | `/api/stream/tool-approval` | Approve or deny tool usage |
 | `POST` | `/api/stream/abort` | Abort the current query |
+
+### Sessions
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | `GET` | `/api/sessions` | List saved sessions |
-| `GET` | `/api/sessions/:id/messages` | Get session messages |
+| `GET` | `/api/sessions/:id/messages` | Get session messages (supports pagination) |
+
+### Filesystem
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | `GET` | `/api/filesystem` | List directories |
 | `POST` | `/api/filesystem/mkdir` | Create a directory |
 | `POST` | `/api/filesystem/rmdir` | Remove a directory |
+
+### Git
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/git/status` | Get staged, unstaged, and untracked files |
+| `GET` | `/api/git/log` | Get commit log with graph |
+| `GET` | `/api/git/diff` | Get diff for a file |
+| `GET` | `/api/git/sync-status` | Check ahead/behind counts |
+| `GET` | `/api/git/branches` | List local and remote branches |
+| `POST` | `/api/git/stage` | Stage files |
+| `POST` | `/api/git/unstage` | Unstage files |
+| `POST` | `/api/git/commit` | Create a commit |
+| `POST` | `/api/git/push` | Push to remote |
+| `POST` | `/api/git/pull` | Pull from remote |
+| `POST` | `/api/git/checkout` | Checkout a branch |
+| `POST` | `/api/git/create-branch` | Create a new branch |
+| `POST` | `/api/git/discard` | Discard file changes |
+
+### Models
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/models` | List available AI models |
+
+### Voice
+
+| Protocol | Endpoint | Description |
+|----------|----------|-------------|
+| WebSocket | `/ws/voice` | Voice mode (STT, TTS, Claude streaming) |
+
+### Health
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check |
+
+## Voice Mode
+
+Voice mode provides a real-time conversational experience using Speech-to-Text and Text-to-Speech services running in Docker.
+
+### Setup
+
+Start the voice services using Docker Compose:
+
+```bash
+# GPU-accelerated (recommended)
+docker compose --profile gpu up -d
+
+# CPU-only fallback
+docker compose --profile cpu up -d
+```
+
+This starts:
+- **STT** (port 8001) — Whisper-based speech recognition via `faster-whisper`
+- **TTS** (port 8880) — Kokoro-based speech synthesis
+
+Set the service URLs in your environment:
+
+```env
+STT_URL="http://localhost:8001"
+TTS_URL="http://localhost:8880"
+```
+
+### How It Works
+
+1. Client connects via WebSocket to `/ws/voice`
+2. Audio is streamed to the server and transcribed via the STT service
+3. Transcripts are sent to Claude for processing
+4. Claude's response is streamed through a sentence buffer
+5. Each sentence is converted to speech via the TTS service
+6. Audio is sent back to the client in real-time
 
 ## How It Works
 
@@ -150,7 +251,8 @@ AEBClawd/
 2. **Start chatting** — new session or resume an existing one
 3. **Stream in real-time** — prompts go to the backend, which invokes Claude via the Agent SDK
 4. **Approve tools** — when Claude wants to run a tool, you approve or deny it
-5. **Resume anytime** — sessions are persisted automatically
+5. **Manage git** — stage, commit, push, pull, and branch from the UI
+6. **Resume anytime** — sessions are persisted automatically
 
 ## Configuration
 
@@ -160,6 +262,20 @@ AEBClawd/
 | `ANTHROPIC_API_KEY` | Yes | — | Your Anthropic API key |
 | `PORT` | No | `3001` | Backend server port |
 | `NEXT_PUBLIC_API_URL` | No | `http://localhost:3001` | Backend URL for the frontend |
+| `STT_URL` | No | — | Speech-to-Text service URL |
+| `TTS_URL` | No | — | Text-to-Speech service URL |
+
+### Bot Configuration
+
+Each bot platform requires its own credentials:
+
+| Variable | Platform |
+|----------|----------|
+| `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET` | Slack |
+| `DISCORD_TOKEN`, `DISCORD_PUBLIC_KEY` | Discord |
+| `TEAMS_APP_ID`, `TEAMS_APP_PASSWORD` | Microsoft Teams |
+| `TELEGRAM_BOT_TOKEN` | Telegram |
+| `GITHUB_TOKEN`, `GITHUB_WEBHOOK_SECRET` | GitHub |
 
 ## Contributing
 
