@@ -1,0 +1,27 @@
+{
+  "name": "bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@aebclawd/core": "workspace:*",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.80",
+    "@chat-adapter/discord": "^4.20.2",
+    "@chat-adapter/github": "^4.20.2",
+    "@chat-adapter/slack": "^4.20.2",
+    "@chat-adapter/state-memory": "^4.20.2",
+    "@chat-adapter/teams": "^4.20.2",
+    "@chat-adapter/telegram": "^4.20.2",
+    "chat": "^4.20.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.19.0",
+    "typescript": "^5"
+  }
+}
