@@ -21,6 +21,6 @@ app.route("/api/models", models);
 
 app.get("/health", (c) => c.json({ status: "ok" }));
 
-serve({ fetch: app.fetch, port: env.PORT }, () => {
-  logger.info(`Server listening on port ${env.PORT}`);
+serve({ fetch: app.fetch, port: env.PORT, hostname: "0.0.0.0" }, () => {
+  logger.info(`Server listening on 0.0.0.0:${env.PORT}`);
 });
