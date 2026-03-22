@@ -19,11 +19,17 @@ export function connectSSE(
   handlers: SSEHandlers
 ): () => void {
   const url = `${baseUrl}/api/stream?clientId=${clientId}`;
+  console.log("[SSE lib] Creating EventSource for:", url);
 
   const es = new EventSource(url);
 
   es.addEventListener("open", () => {
+    console.log("[SSE lib] open event fired");
     handlers.onOpen?.();
+  });
+
+  es.addEventListener("message", (event: any) => {
+    console.log("[SSE lib] message event:", event?.data?.slice?.(0, 100));
   });
 
   es.addEventListener("stream", (event: any) => {
@@ -59,16 +65,19 @@ export function connectSSE(
   });
 
   es.addEventListener("error", (event: any) => {
+    console.log("[SSE lib] error event:", JSON.stringify(event));
     if (event?.type === "error") {
       handlers.onError?.(event.message || "Connection error");
     }
   });
 
   es.addEventListener("close", () => {
+    console.log("[SSE lib] close event fired");
     handlers.onClose?.();
   });
 
   return () => {
+    console.log("[SSE lib] closing connection");
     es.close();
   };
 }

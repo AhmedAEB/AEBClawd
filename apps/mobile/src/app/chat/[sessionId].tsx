@@ -409,10 +409,18 @@ export default function ChatScreen() {
 
   // Connect SSE
   useEffect(() => {
-    if (!apiUrl) return;
+    if (!apiUrl) {
+      console.log("[SSE] No apiUrl, skipping connection");
+      return;
+    }
+
+    console.log("[SSE] Connecting to", apiUrl, "with clientId", clientIdRef.current);
 
     const disconnect = connectSSE(apiUrl, clientIdRef.current, {
-      onOpen: () => setIsConnected(true),
+      onOpen: () => {
+        console.log("[SSE] Connected!");
+        setIsConnected(true);
+      },
       onStream: handleStreamData,
       onToolApproval: (data) => {
         setPendingApprovals((prev) => [...prev, data]);
@@ -424,10 +432,12 @@ export default function ChatScreen() {
         streamBufferRef.current = "";
       },
       onError: (msg) => {
+        console.log("[SSE] Error:", msg);
         addEvent("error", msg);
         setIsStreaming(false);
       },
       onClose: () => {
+        console.log("[SSE] Closed");
         setIsConnected(false);
       },
     });
