@@ -2,8 +2,9 @@
   "name": "aebclawd",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter frontend dev & pnpm --filter server dev",
+    "dev": "pnpm --filter frontend dev & pnpm --filter server dev & pnpm --filter bot dev",
     "frontend:dev": "pnpm --filter frontend dev",
-    "server:dev": "pnpm --filter server dev"
+    "server:dev": "pnpm --filter server dev",
+    "bot:dev": "pnpm --filter bot dev"
   }
 }
