@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext } from "react";
 import { useVoice, type VoiceState } from "../hooks/use-voice";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -104,14 +104,7 @@ export function VoiceButton({
 
 export function VoicePanel() {
   const voice = useVoiceContext();
-  const [voiceInput, setVoiceInput] = useState("");
   if (!voice || !voice.isInCall) return null;
-
-  const handleVoiceInputSubmit = () => {
-    if (!voiceInput.trim()) return;
-    voice.sendText(voiceInput.trim());
-    setVoiceInput("");
-  };
 
   return (
     <div className="border-t-2 border-fg bg-void px-6 py-4">
@@ -155,31 +148,6 @@ export function VoicePanel() {
           </div>
         </div>
 
-        {/* Transcript */}
-        {(voice.transcript || voice.claudeText) && (
-          <div className="mb-3 max-h-32 overflow-y-auto border border-edge bg-panel-2 p-3 font-mono text-[12px] leading-relaxed text-fg-2">
-            {voice.transcript && (
-              <div className="mb-1">
-                <span className="mr-2 text-[10px] font-bold uppercase tracking-wider opacity-50">
-                  YOU
-                </span>
-                {voice.transcript}
-              </div>
-            )}
-            {voice.claudeText && (
-              <div>
-                <span className="mr-2 text-[10px] font-bold uppercase tracking-wider opacity-50">
-                  CLAUDE
-                </span>
-                {voice.claudeText}
-                {voice.state === "speaking" && (
-                  <span className="animate-pulse-dot ml-0.5 inline-block h-2 w-1 bg-fg align-middle" />
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Click-to-talk toggle */}
         <button
           onClick={voice.toggleRecording}
@@ -216,30 +184,6 @@ export function VoicePanel() {
           )}
         </button>
 
-        {/* Text input for voice pipeline (works in mock mode and during calls) */}
-        <div className="mt-2 flex gap-2">
-          <input
-            type="text"
-            value={voiceInput}
-            onChange={(e) => setVoiceInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleVoiceInputSubmit();
-              }
-            }}
-            placeholder="Or type here to talk to Claude..."
-            disabled={voice.state === "thinking"}
-            className="flex-1 border border-edge bg-void px-3 py-2 font-mono text-[12px] text-fg outline-none placeholder:text-fg-3 focus:border-fg disabled:opacity-30"
-          />
-          <button
-            onClick={handleVoiceInputSubmit}
-            disabled={!voiceInput.trim() || voice.state === "thinking"}
-            className="border-2 border-fg px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-fg transition-colors hover:bg-fg hover:text-void disabled:opacity-30"
-          >
-            SAY
-          </button>
-        </div>
       </div>
     </div>
   );

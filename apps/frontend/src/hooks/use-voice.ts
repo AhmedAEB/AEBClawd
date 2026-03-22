@@ -31,12 +31,10 @@ export function useVoice(options: UseVoiceOptions) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const claudeTextBufferRef = useRef("");
-  const hasTtsServerRef = useRef(false);
 
   const {
     playPcmChunk,
     stopAll: stopAudio,
-    speakFallback,
     stopFallback,
     dispose: disposeAudio,
   } = useAudioPlayback();
@@ -46,15 +44,11 @@ export function useVoice(options: UseVoiceOptions) {
     (event: MessageEvent) => {
       // Binary frame = TTS audio
       if (event.data instanceof ArrayBuffer) {
-        hasTtsServerRef.current = true;
-        if (!ttsMuted) {
-          playPcmChunk(event.data);
-        }
+        if (!ttsMuted) playPcmChunk(event.data);
         return;
       }
 
       if (event.data instanceof Blob) {
-        hasTtsServerRef.current = true;
         event.data.arrayBuffer().then((buf) => {
           if (!ttsMuted) playPcmChunk(buf);
         });
@@ -79,13 +73,9 @@ export function useVoice(options: UseVoiceOptions) {
 
           case "claude_text":
             if (msg.done) {
-              // Response complete — speak via fallback if no TTS server was used
-              if (!hasTtsServerRef.current && !ttsMuted) {
-                speakFallback(claudeTextBufferRef.current);
-              }
               onVoiceMessage(claudeTextBufferRef.current, "assistant");
               claudeTextBufferRef.current = "";
-              hasTtsServerRef.current = false;
+              setClaudeText("");
             } else {
               claudeTextBufferRef.current += msg.text;
               setClaudeText(claudeTextBufferRef.current);
@@ -109,7 +99,7 @@ export function useVoice(options: UseVoiceOptions) {
         // Ignore unparseable messages
       }
     },
-    [ttsMuted, playPcmChunk, speakFallback, onVoiceMessage],
+    [ttsMuted, playPcmChunk, onVoiceMessage],
   );
 
   // ── Start a voice call ────────────────────────────────────────
