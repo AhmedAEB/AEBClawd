@@ -19,6 +19,9 @@ stream.get("/", (c) => {
       s.writeSSE({ event, data: JSON.stringify(data) }).catch(() => {});
     });
 
+    // Send immediate ping so clients detect the connection is open
+    await s.writeSSE({ event: "ping", data: "" });
+
     const keepAlive = setInterval(() => {
       s.writeSSE({ event: "ping", data: "" }).catch(() => {});
     }, 30_000);

@@ -5,6 +5,9 @@
     "dev": "pnpm --filter frontend dev & pnpm --filter server dev & pnpm --filter bot dev",
     "frontend:dev": "pnpm --filter frontend dev",
     "server:dev": "pnpm --filter server dev",
-    "bot:dev": "pnpm --filter bot dev"
+    "bot:dev": "pnpm --filter bot dev",
+    "mobile:dev": "pnpm --filter mobile start",
+    "mobile:ios": "pnpm --filter mobile ios",
+    "mobile:android": "pnpm --filter mobile android"
   }
 }
