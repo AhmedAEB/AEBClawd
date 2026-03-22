@@ -21,6 +21,7 @@ import { api } from "@/lib/api";
 import { connectSSE } from "@/lib/sse";
 import { Fonts } from "@/constants/theme";
 import SourceControlModal from "@/components/source-control";
+import { Markdown } from "@/components/markdown";
 
 type MessageRole = "user" | "assistant" | "system" | "event";
 
@@ -505,7 +506,7 @@ export default function ChatScreen() {
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       base64: true,
       quality: 0.8,
     });
@@ -592,15 +593,16 @@ export default function ChatScreen() {
               ))}
             </View>
           )}
-          <Text
-            style={[
-              styles.bubbleText,
-              { color: isUser ? theme.void : theme.fg2 },
-            ]}
-            selectable
-          >
-            {item.content}
-          </Text>
+          {isUser ? (
+            <Text
+              style={[styles.bubbleText, { color: theme.void }]}
+              selectable
+            >
+              {item.content}
+            </Text>
+          ) : (
+            <Markdown content={item.content} />
+          )}
         </View>
       </View>
     );

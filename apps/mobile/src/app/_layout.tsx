@@ -11,18 +11,18 @@ export default function RootLayout() {
     <ConfigProvider>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
             name="browse"
-            options={{ headerShown: true, title: "Browse" }}
+            options={{ headerShown: true, title: "Browse", headerBackTitle: "Back" }}
           />
           <Stack.Screen
             name="sessions"
-            options={{ headerShown: true, title: "Sessions" }}
+            options={{ headerShown: true, title: "Sessions", headerBackTitle: "Back" }}
           />
           <Stack.Screen
             name="chat/[sessionId]"
-            options={{ headerShown: true, title: "Chat" }}
+            options={{ headerShown: true, title: "Chat", headerBackTitle: "Back" }}
           />
         </Stack>
       </ThemeProvider>
