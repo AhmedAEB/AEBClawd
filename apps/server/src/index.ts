@@ -1,9 +1,33 @@
+import { existsSync, mkdirSync, symlinkSync, lstatSync, readdirSync, copyFileSync } from "fs";
+import { join } from "path";
+import { homedir } from "os";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { env } from "./lib/env.js";
 import { logger } from "./lib/logger.js";
+
+// Persist ~/.claude on a volume so auth tokens survive deploys
+if (env.DATA_DIR && existsSync(env.DATA_DIR)) {
+  const claudeData = join(env.DATA_DIR, ".claude");
+  const claudeHome = join(homedir(), ".claude");
+  mkdirSync(claudeData, { recursive: true });
+  let needsLink = true;
+  try { needsLink = !lstatSync(claudeHome).isSymbolicLink() && !existsSync(claudeHome); } catch {}
+  if (needsLink) {
+    try { symlinkSync(claudeData, claudeHome); logger.info(`Symlinked ${claudeHome} -> ${claudeData}`); } catch {}
+  }
+  // Restore ~/.claude.json from backup if missing
+  const claudeJson = join(homedir(), ".claude.json");
+  if (!existsSync(claudeJson)) {
+    const backupsDir = join(claudeData, "backups");
+    if (existsSync(backupsDir)) {
+      const latest = readdirSync(backupsDir).filter((f) => f.startsWith(".claude.json.backup.")).sort().pop();
+      if (latest) { copyFileSync(join(backupsDir, latest), claudeJson); logger.info(`Restored ${claudeJson} from backup`); }
+    }
+  }
+}
 import sessions from "./routes/sessions.js";
 import stream from "./routes/stream.js";
 import filesystem from "./routes/filesystem.js";
