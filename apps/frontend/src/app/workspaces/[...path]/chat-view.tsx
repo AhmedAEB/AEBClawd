@@ -8,6 +8,14 @@ import SourceControlSidebar from "./source-control";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+const PERMISSION_MODES = [
+  { value: "default", displayName: "Default", description: "Prompts for dangerous operations" },
+  { value: "acceptEdits", displayName: "Accept Edits", description: "Auto-accept file edits" },
+  { value: "bypassPermissions", displayName: "Bypass", description: "Bypass all permission checks" },
+  { value: "plan", displayName: "Plan", description: "Planning mode, no tool execution" },
+  { value: "dontAsk", displayName: "Don't Ask", description: "Deny if not pre-approved" },
+] as const;
+
 function encodePath(p: string): string {
   return p.split("/").map(encodeURIComponent).join("/");
 }
@@ -101,10 +109,13 @@ export default function ChatView({
     { value: string; displayName: string; description: string }[]
   >([]);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [selectedPermissionMode, setSelectedPermissionMode] = useState("default");
+  const [permMenuOpen, setPermMenuOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const permMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const clientIdRef = useRef(crypto.randomUUID());
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -128,10 +139,13 @@ export default function ChatView({
       if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
         setModelMenuOpen(false);
       }
+      if (permMenuRef.current && !permMenuRef.current.contains(e.target as Node)) {
+        setPermMenuOpen(false);
+      }
     };
-    if (modelMenuOpen) document.addEventListener("mousedown", handleClickOutside);
+    if (modelMenuOpen || permMenuOpen) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [modelMenuOpen]);
+  }, [modelMenuOpen, permMenuOpen]);
 
   const pathSegments = relativePath.split("/").filter(Boolean);
   const dirName = pathSegments[pathSegments.length - 1] ?? "root";
@@ -586,6 +600,7 @@ export default function ChatView({
         sessionId: sessionId ?? undefined,
         workDir: relativePath,
         model: selectedModel,
+        permissionMode: selectedPermissionMode,
         ...(images.length > 0 && {
           images: images.map((img) => ({ data: img.data, mediaType: img.mediaType })),
         }),
@@ -719,11 +734,47 @@ export default function ChatView({
               </div>
             )}
           </div>
-          {statusInfo.permissionMode && (
-            <span className="border border-edge px-1.5 py-0.5 text-fg-2">
-              {statusInfo.permissionMode}
-            </span>
-          )}
+          <div className="relative" ref={permMenuRef}>
+            <button
+              onClick={() => setPermMenuOpen((v) => !v)}
+              className={`flex items-center gap-1.5 border-2 border-edge px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                permMenuOpen ? "bg-fg text-void" : "text-fg hover:bg-panel-2"
+              }`}
+              disabled={isStreaming}
+            >
+              {PERMISSION_MODES.find((m) => m.value === selectedPermissionMode)?.displayName ?? "Default"}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
+                <path fillRule="evenodd" d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+              </svg>
+            </button>
+            {permMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 border-2 border-edge bg-void">
+                {PERMISSION_MODES.map((m) => (
+                  <button
+                    key={m.value}
+                    onClick={() => {
+                      setSelectedPermissionMode(m.value);
+                      setPermMenuOpen(false);
+                    }}
+                    className={`group block w-full whitespace-nowrap px-4 py-2 text-left transition-colors ${
+                      selectedPermissionMode === m.value
+                        ? "bg-fg text-void"
+                        : "text-fg hover:bg-panel-2"
+                    }`}
+                  >
+                    <span className="block text-[11px] font-bold uppercase tracking-wider">
+                      {m.displayName}
+                    </span>
+                    <span className={`block text-[10px] font-normal normal-case tracking-normal ${
+                      selectedPermissionMode === m.value ? "opacity-60" : "text-fg-3"
+                    }`}>
+                      {m.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {statusInfo.turns !== undefined && (
             <span className="text-fg-3">
               {statusInfo.turns} turn{statusInfo.turns !== 1 ? "s" : ""}

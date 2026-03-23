@@ -59,6 +59,7 @@ export const api = {
     sessionId?: string;
     workDir?: string;
     model?: string;
+    permissionMode?: string;
     images?: { data: string; mediaType: string }[];
   }) => post("/api/stream/prompt", body as unknown as Record<string, unknown>),
   toolApproval: (body: {

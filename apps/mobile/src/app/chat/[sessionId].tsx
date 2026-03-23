@@ -48,6 +48,14 @@ interface ToolApprovalRequest {
   title?: string;
 }
 
+const PERMISSION_MODES = [
+  { value: "default", displayName: "Default", description: "Prompts for dangerous operations" },
+  { value: "acceptEdits", displayName: "Accept Edits", description: "Auto-accept file edits" },
+  { value: "bypassPermissions", displayName: "Bypass", description: "Bypass all permission checks" },
+  { value: "plan", displayName: "Plan", description: "Planning mode, no tool execution" },
+  { value: "dontAsk", displayName: "Don't Ask", description: "Deny if not pre-approved" },
+] as const;
+
 const EVENT_LABELS: Record<string, string> = {
   init: "INIT",
   retry: "RETRY",
@@ -96,6 +104,8 @@ export default function ChatScreen() {
     { value: string; displayName: string; description: string }[]
   >([]);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [selectedPermissionMode, setSelectedPermissionMode] = useState("default");
+  const [permMenuOpen, setPermMenuOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([]);
 
   const clientIdRef = useRef(
@@ -478,6 +488,7 @@ export default function ChatScreen() {
       sessionId: sessionId ?? undefined,
       workDir: relativePath,
       model: selectedModel,
+      permissionMode: selectedPermissionMode,
       ...(images.length > 0 && {
         images: images.map((img) => ({
           data: img.data,
@@ -647,7 +658,7 @@ export default function ChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
-        {/* Model selector bar */}
+        {/* Model & permission selector bar */}
         <View style={[styles.modelBar, { borderBottomColor: theme.edge }]}>
           <Pressable
             onPress={() => setModelMenuOpen(true)}
@@ -661,6 +672,20 @@ export default function ChatScreen() {
               ]}
             >
               {currentModelName}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setPermMenuOpen(true)}
+            disabled={isStreaming}
+            style={[styles.modelButton, { borderColor: theme.edge }]}
+          >
+            <Text
+              style={[
+                styles.modelButtonText,
+                { color: theme.fg, fontFamily: Fonts?.mono },
+              ]}
+            >
+              {PERMISSION_MODES.find((m) => m.value === selectedPermissionMode)?.displayName ?? "Default"}
             </Text>
           </Pressable>
           {statusInfo.turns !== undefined && (
@@ -933,6 +958,66 @@ export default function ChatScreen() {
                       {
                         color:
                           selectedModel === m.value ? theme.void : theme.fg3,
+                      },
+                    ]}
+                  >
+                    {m.description}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </Pressable>
+        </Modal>
+
+        {/* Permission mode picker modal */}
+        <Modal
+          visible={permMenuOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPermMenuOpen(false)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setPermMenuOpen(false)}
+          >
+            <View
+              style={[styles.modelMenu, { backgroundColor: theme.void, borderColor: theme.edge }]}
+            >
+              <Text style={[styles.modelMenuTitle, { color: theme.fg }]}>
+                PERMISSION MODE
+              </Text>
+              {PERMISSION_MODES.map((m) => (
+                <Pressable
+                  key={m.value}
+                  onPress={() => {
+                    setSelectedPermissionMode(m.value);
+                    setPermMenuOpen(false);
+                  }}
+                  style={[
+                    styles.modelMenuItem,
+                    {
+                      backgroundColor:
+                        selectedPermissionMode === m.value ? theme.fg : "transparent",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.modelMenuItemName,
+                      {
+                        color:
+                          selectedPermissionMode === m.value ? theme.void : theme.fg,
+                      },
+                    ]}
+                  >
+                    {m.displayName}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.modelMenuItemDesc,
+                      {
+                        color:
+                          selectedPermissionMode === m.value ? theme.void : theme.fg3,
                       },
                     ]}
                   >

@@ -1,4 +1,4 @@
-import { query, type SDKMessage, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
+import { query, type SDKMessage, type SDKUserMessage, type PermissionMode } from "@anthropic-ai/claude-agent-sdk";
 import { randomUUID } from "crypto";
 import { logger } from "./logger.js";
 import type { ToolApprovalResult } from "./types.js";
@@ -14,6 +14,7 @@ export interface RunQueryOptions {
   cwd: string;
   model?: string;
   images?: ImageAttachment[];
+  permissionMode?: string;
 }
 
 export interface RunQueryCallbacks {
@@ -68,6 +69,7 @@ export async function runQuery(
           includePartialMessages: true,
           ...(options.resumeId ? { resume: options.resumeId } : {}),
           ...(options.model ? { model: options.model } : {}),
+          ...(options.permissionMode ? { permissionMode: options.permissionMode as PermissionMode } : {}),
           systemPrompt: { type: "preset", preset: "claude_code" },
           canUseTool: async (toolName, input, opts) => {
             if (toolName === "AskUserQuestion") {
