@@ -252,6 +252,20 @@ function main() {
     ) + "\n",
   );
 
+  // collection.bru (uses vars:pre-request, not bare vars)
+  writeFileSync(
+    join(BRUNO, "collection.bru"),
+    `meta {
+  name: AEBClawd API
+  type: collection
+}
+
+vars:pre-request {
+  baseUrl: http://localhost:3001
+}
+`,
+  );
+
   // Environment
   writeFileSync(
     join(BRUNO, "environments", "local.bru"),
