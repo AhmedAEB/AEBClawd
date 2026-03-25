@@ -1,12 +1,26 @@
 import { existsSync, mkdirSync, symlinkSync, lstatSync, readdirSync, copyFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { execSync } from "child_process";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { env } from "./lib/env.js";
 import { logger } from "./lib/logger.js";
+
+// Ensure git is available (apt packages are lost on each deploy)
+try {
+  execSync("git --version", { stdio: "ignore" });
+} catch {
+  logger.info("git not found, installing...");
+  try {
+    execSync("apt-get update -qq && apt-get install -y -qq git", { stdio: "pipe" });
+    logger.info("git installed successfully");
+  } catch (e) {
+    logger.warn("Failed to install git via apt: " + (e instanceof Error ? e.message : e));
+  }
+}
 
 // Persist ~/.claude on a volume so auth tokens survive deploys
 if (env.DATA_DIR && existsSync(env.DATA_DIR)) {
