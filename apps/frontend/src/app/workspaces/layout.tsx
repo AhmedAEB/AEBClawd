@@ -7,7 +7,7 @@ export default function WorkspacesLayout({
 }) {
   return (
     <div className="flex h-screen flex-col bg-void text-fg">
-      <header className="flex items-center justify-between border-b-2 border-edge px-6 py-3">
+      <header className="flex items-center justify-between border-b-2 border-edge px-3 py-3 sm:px-6">
         <Link
           href="/"
           className="font-display text-[15px] font-bold uppercase tracking-[0.1em] hover:text-fg-2 transition-colors"

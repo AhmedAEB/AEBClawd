@@ -659,8 +659,8 @@ export default function ChatView({
         </div>
       )}
       {/* Sub-header */}
-      <div className="flex items-center justify-between border-b border-edge px-6 py-2">
-        <nav className="flex items-center gap-1 text-[11px] font-mono text-fg-3">
+      <div className="flex flex-wrap items-center justify-between gap-y-1 border-b border-edge px-3 py-2 sm:px-6">
+        <nav className="flex min-w-0 items-center gap-1 overflow-x-auto text-[11px] font-mono text-fg-3">
           <Link href="/workspaces" className="hover:text-fg transition-colors" aria-label="Home">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5"><path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" /></svg>
           </Link>
@@ -692,16 +692,16 @@ export default function ChatView({
           )}
         </nav>
 
-        <div className="flex items-center gap-3 font-mono text-[11px]">
+        <div className="flex shrink-0 items-center gap-2 font-mono text-[11px] sm:gap-3">
           <div className="relative" ref={modelMenuRef}>
             <button
               onClick={() => setModelMenuOpen((v) => !v)}
-              className={`flex items-center gap-1.5 border-2 border-edge px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+              className={`flex max-w-[140px] items-center gap-1.5 border-2 border-edge px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider transition-colors sm:max-w-none ${
                 modelMenuOpen ? "bg-fg text-void" : "text-fg hover:bg-panel-2"
               }`}
               disabled={isStreaming || availableModels.length === 0}
             >
-              {availableModels.find((m) => m.value === selectedModel)?.displayName ?? (selectedModel || "...")}
+              <span className="truncate">{availableModels.find((m) => m.value === selectedModel)?.displayName ?? (selectedModel || "...")}</span>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
                 <path fillRule="evenodd" d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
               </svg>
@@ -737,12 +737,12 @@ export default function ChatView({
           <div className="relative" ref={permMenuRef}>
             <button
               onClick={() => setPermMenuOpen((v) => !v)}
-              className={`flex items-center gap-1.5 border-2 border-edge px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+              className={`flex max-w-[120px] items-center gap-1.5 border-2 border-edge px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider transition-colors sm:max-w-none ${
                 permMenuOpen ? "bg-fg text-void" : "text-fg hover:bg-panel-2"
               }`}
               disabled={isStreaming}
             >
-              {PERMISSION_MODES.find((m) => m.value === selectedPermissionMode)?.displayName ?? "Default"}
+              <span className="truncate">{PERMISSION_MODES.find((m) => m.value === selectedPermissionMode)?.displayName ?? "Default"}</span>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
                 <path fillRule="evenodd" d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
               </svg>
