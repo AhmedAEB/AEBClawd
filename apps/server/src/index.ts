@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, symlinkSync, lstatSync, readdirSync, copyFileSync } from "fs";
+import { existsSync, mkdirSync, symlinkSync, lstatSync, readdirSync, copyFileSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { execSync } from "child_process";
@@ -9,17 +9,54 @@ import { cors } from "hono/cors";
 import { env } from "./lib/env.js";
 import { logger } from "./lib/logger.js";
 
-// Ensure git is available (apt packages are lost on each deploy)
-try {
-  execSync("git --version", { stdio: "ignore" });
-} catch {
-  logger.info("git not found, installing...");
+// Persist apt packages across deploys using DATA_DIR volume
+if (env.DATA_DIR && existsSync(env.DATA_DIR)) {
+  const aptDir = join(env.DATA_DIR, ".apt");
+  const aptCache = join(aptDir, "archives");
+  const pkgListFile = join(aptDir, "packages");
+  mkdirSync(aptCache, { recursive: true });
+
+  // Symlink apt archive cache to persistent volume so .deb files survive deploys
+  const sysCache = "/var/cache/apt/archives";
   try {
-    execSync("apt-get update -qq && apt-get install -y -qq git", { stdio: "pipe" });
-    logger.info("git installed successfully");
-  } catch (e) {
-    logger.warn("Failed to install git via apt: " + (e instanceof Error ? e.message : e));
+    const isSym = lstatSync(sysCache).isSymbolicLink();
+    if (!isSym) {
+      execSync(`cp -rn ${sysCache}/*.deb ${aptCache}/ 2>/dev/null || true`, { stdio: "pipe" });
+      execSync(`rm -rf ${sysCache}`, { stdio: "pipe" });
+      symlinkSync(aptCache, sysCache);
+      logger.info(`Symlinked apt cache -> ${aptCache}`);
+    }
+  } catch {
+    try { symlinkSync(aptCache, sysCache); } catch {}
   }
+
+  // Restore previously saved packages from the persistent list
+  if (existsSync(pkgListFile)) {
+    const pkgs = readFileSync(pkgListFile, "utf-8").trim();
+    if (pkgs) {
+      logger.info(`Restoring apt packages: ${pkgs}`);
+      try {
+        execSync(`apt-get update -qq && apt-get install -y -qq ${pkgs}`, { stdio: "pipe" });
+        logger.info("apt packages restored successfully");
+      } catch (e) {
+        logger.warn("Failed to restore apt packages: " + (e instanceof Error ? e.message : e));
+      }
+    }
+  }
+
+  // Helper: call persistAptPackage("git") to add a package to the survive list
+  (globalThis as any).persistAptPackage = (pkg: string) => {
+    const existing = existsSync(pkgListFile) ? readFileSync(pkgListFile, "utf-8").trim() : "";
+    const pkgSet = new Set(existing.split(/\s+/).filter(Boolean));
+    if (!pkgSet.has(pkg)) {
+      pkgSet.add(pkg);
+      writeFileSync(pkgListFile, [...pkgSet].join("\n") + "\n");
+      logger.info(`Added "${pkg}" to persistent apt packages`);
+    }
+  };
+
+  // Seed with git (required for source control features)
+  (globalThis as any).persistAptPackage("git");
 }
 
 // Persist ~/.claude on a volume so auth tokens survive deploys
