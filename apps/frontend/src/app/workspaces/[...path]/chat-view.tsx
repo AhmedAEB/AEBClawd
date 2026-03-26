@@ -3,10 +3,26 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Markdown } from "@/components/markdown";
-import { VoiceProvider, VoiceButton, VoicePanel } from "@/components/voice-mode";
+import { VoiceProvider, VoiceButton, VoicePanel, useVoiceContext } from "@/components/voice-mode";
+import { CallProvider, CallButton, CallPanel, useCallContext } from "@/components/call-mode";
 import SourceControlSidebar from "./source-control";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+/** Renders VoiceButton and CallButton with mutual exclusion — only one mode active at a time. */
+function MutualExclusiveButtons({ isConnected, isStreaming }: { isConnected: boolean; isStreaming: boolean }) {
+  const voice = useVoiceContext();
+  const call = useCallContext();
+  const voiceActive = voice?.isInCall ?? false;
+  const callActive = call?.isInCall ?? false;
+
+  return (
+    <>
+      <VoiceButton isConnected={isConnected} isStreaming={isStreaming} otherModeActive={callActive} />
+      <CallButton isConnected={isConnected} isStreaming={isStreaming} otherModeActive={voiceActive} />
+    </>
+  );
+}
 
 const PERMISSION_MODES = [
   { value: "default", displayName: "Default", description: "Prompts for dangerous operations" },
@@ -957,7 +973,7 @@ export default function ChatView({
         </div>
       )}
 
-      {/* Voice + Input */}
+      {/* Voice + Call + Input */}
       <VoiceProvider
         clientId={clientIdRef.current}
         sessionId={sessionId ?? null}
@@ -965,7 +981,15 @@ export default function ChatView({
         selectedModel={selectedModel}
         onVoiceMessage={handleVoiceMessage}
       >
+      <CallProvider
+        clientId={clientIdRef.current}
+        sessionId={sessionId ?? null}
+        relativePath={relativePath}
+        selectedModel={selectedModel}
+        onCallMessage={handleVoiceMessage}
+      >
       <VoicePanel />
+      <CallPanel />
       <footer className="px-6 pb-6 pt-2">
         <div className="mx-auto max-w-2xl">
           <div
@@ -1014,7 +1038,7 @@ export default function ChatView({
                   <path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909-4.97-4.969a.75.75 0 0 0-1.06 0L2.5 11.06ZM12.75 7a1.25 1.25 0 1 1 2.5 0 1.25 1.25 0 0 1-2.5 0Z" clipRule="evenodd" />
                 </svg>
               </button>
-              <VoiceButton isConnected={isConnected} isStreaming={isStreaming} />
+              <MutualExclusiveButtons isConnected={isConnected} isStreaming={isStreaming} />
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -1045,6 +1069,7 @@ export default function ChatView({
           </div>
         </div>
       </footer>
+      </CallProvider>
       </VoiceProvider>
       </div>
 

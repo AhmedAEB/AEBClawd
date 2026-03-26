@@ -22,21 +22,29 @@ export function createVoiceHandler(upgradeWebSocket: UpgradeWebSocket) {
       },
 
       onMessage(event: MessageEvent, ws: any) {
-        // Binary frame = audio chunk
-        if (event.data instanceof ArrayBuffer) {
+        // Binary frame = audio data
+        if (event.data instanceof ArrayBuffer || Buffer.isBuffer(event.data)) {
           if (!clientId) return;
           const session = getVoiceSession(clientId);
-          if (session) {
-            session.audioChunks.push(Buffer.from(event.data));
-          }
-          return;
-        }
+          if (!session) return;
 
-        if (Buffer.isBuffer(event.data)) {
-          if (!clientId) return;
-          const session = getVoiceSession(clientId);
-          if (session) {
-            session.audioChunks.push(event.data);
+          const chunk = Buffer.isBuffer(event.data)
+            ? event.data
+            : Buffer.from(event.data);
+
+          if (session.mode === "call") {
+            // Call mode: binary = complete VAD utterance → run pipeline immediately
+            logger.info(`[voice-ws] Call mode: received ${chunk.byteLength} bytes of audio`);
+            session.audioChunks = [chunk];
+            ws.send(JSON.stringify({ type: "state", state: "thinking" }));
+            runVoicePipeline(session, ws).catch((err) => {
+              logger.error(`[voice-ws] Pipeline error: ${err.message}`);
+              try { ws.send(JSON.stringify({ type: "error", message: err.message })); } catch {}
+              try { ws.send(JSON.stringify({ type: "state", state: "listening" })); } catch {}
+            });
+          } else {
+            // Voice mode: accumulate chunks for PTT
+            session.audioChunks.push(chunk);
           }
           return;
         }
@@ -58,6 +66,7 @@ export function createVoiceHandler(upgradeWebSocket: UpgradeWebSocket) {
               msg.workDir,
               msg.model,
               msg.sessionId,
+              msg.mode || "voice",
             );
             ws.send(
               JSON.stringify({
@@ -90,12 +99,8 @@ export function createVoiceHandler(upgradeWebSocket: UpgradeWebSocket) {
 
             runVoicePipeline(session, ws).catch((err) => {
               logger.error(`[voice-ws] Pipeline error: ${err.message}`);
-              ws.send(
-                JSON.stringify({ type: "error", message: err.message }),
-              );
-              ws.send(
-                JSON.stringify({ type: "state", state: "listening" }),
-              );
+              try { ws.send(JSON.stringify({ type: "error", message: err.message })); } catch {}
+              try { ws.send(JSON.stringify({ type: "state", state: "listening" })); } catch {}
             });
             break;
           }
@@ -155,7 +160,7 @@ export function createVoiceHandler(upgradeWebSocket: UpgradeWebSocket) {
           case "end_call": {
             if (clientId) {
               deleteVoiceSession(clientId);
-              ws.send(JSON.stringify({ type: "call_ended" }));
+              try { ws.send(JSON.stringify({ type: "call_ended" })); } catch {}
               logger.info(`[voice-ws] Call ended for client ${clientId}`);
               clientId = null;
             }
@@ -173,7 +178,7 @@ export function createVoiceHandler(upgradeWebSocket: UpgradeWebSocket) {
       },
 
       onError(event: Event) {
-        logger.error(`[voice-ws] Error: ${event}`);
+        logger.error(`[voice-ws] WebSocket error event`);
         if (clientId) {
           deleteVoiceSession(clientId);
           clientId = null;

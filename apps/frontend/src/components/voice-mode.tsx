@@ -49,7 +49,7 @@ export function VoiceProvider({
   );
 }
 
-function useVoiceContext() {
+export function useVoiceContext() {
   return useContext(VoiceContext);
 }
 
@@ -58,9 +58,11 @@ function useVoiceContext() {
 export function VoiceButton({
   isConnected,
   isStreaming,
+  otherModeActive = false,
 }: {
   isConnected: boolean;
   isStreaming: boolean;
+  otherModeActive?: boolean;
 }) {
   const voice = useVoiceContext();
   if (!voice) {
@@ -83,9 +85,9 @@ export function VoiceButton({
   return (
     <button
       onClick={voice.startCall}
-      disabled={!isConnected || isStreaming}
+      disabled={!isConnected || isStreaming || otherModeActive}
       className="shrink-0 p-2 text-fg-3 transition-colors hover:text-fg disabled:opacity-30"
-      title="Start voice mode"
+      title={otherModeActive ? "End call mode first" : "Start voice mode"}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -189,7 +191,3 @@ export function VoicePanel() {
   );
 }
 
-// Keep default export for backwards compat — not used anymore
-export default function VoiceMode() {
-  return null;
-}

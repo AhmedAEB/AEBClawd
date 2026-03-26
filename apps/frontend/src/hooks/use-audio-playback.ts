@@ -3,19 +3,21 @@
 import { useRef, useCallback } from "react";
 
 /**
- * Hook for playing PCM audio chunks via Web Audio API with gapless scheduling,
- * plus a SpeechSynthesis fallback for mock mode (no TTS server).
+ * Hook for playing PCM audio chunks via Web Audio API with gapless scheduling.
+ * Tracks active playback count for echo gate support (call mode).
  */
 export function useAudioPlayback() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const nextPlayTimeRef = useRef(0);
   const activeSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const activeCountRef = useRef(0);
+  const onAllFinishedRef = useRef<(() => void) | null>(null);
+  const finishedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const getAudioContext = useCallback(() => {
     if (!audioContextRef.current || audioContextRef.current.state === "closed") {
       audioContextRef.current = new AudioContext({ sampleRate: 24000 });
     }
-    // Resume if suspended (browser autoplay policy)
     if (audioContextRef.current.state === "suspended") {
       audioContextRef.current.resume();
     }
@@ -23,12 +25,18 @@ export function useAudioPlayback() {
   }, []);
 
   /**
-   * Play a PCM audio chunk (Float32 or Int16 at 24kHz mono).
+   * Play a PCM audio chunk (Int16 at 24kHz mono from Kokoro-FastAPI).
    * Schedules gapless playback so consecutive chunks play seamlessly.
    */
   const playPcmChunk = useCallback(
     (arrayBuffer: ArrayBuffer) => {
       const ctx = getAudioContext();
+
+      // Clear any pending "all finished" timer since new audio arrived
+      if (finishedTimerRef.current) {
+        clearTimeout(finishedTimerRef.current);
+        finishedTimerRef.current = null;
+      }
 
       // Kokoro-FastAPI outputs PCM as 16-bit signed integers at 24kHz
       const int16 = new Int16Array(arrayBuffer);
@@ -50,20 +58,41 @@ export function useAudioPlayback() {
       source.start(nextPlayTimeRef.current);
       nextPlayTimeRef.current += buffer.duration;
 
+      activeCountRef.current++;
       activeSourcesRef.current.push(source);
 
-      // Clean up finished sources
       source.onended = () => {
         activeSourcesRef.current = activeSourcesRef.current.filter(
           (s) => s !== source,
         );
+        activeCountRef.current--;
+
+        // When all audio finished, notify after 200ms buffer (for room reverberation)
+        if (activeCountRef.current <= 0) {
+          activeCountRef.current = 0;
+          finishedTimerRef.current = setTimeout(() => {
+            if (activeCountRef.current <= 0 && onAllFinishedRef.current) {
+              onAllFinishedRef.current();
+            }
+            finishedTimerRef.current = null;
+          }, 200);
+        }
       };
     },
     [getAudioContext],
   );
 
+  /** Returns true if any audio is currently playing or scheduled. */
+  const isPlaying = useCallback(() => {
+    return activeCountRef.current > 0;
+  }, []);
+
   /** Stop all currently playing and scheduled audio. */
   const stopAll = useCallback(() => {
+    if (finishedTimerRef.current) {
+      clearTimeout(finishedTimerRef.current);
+      finishedTimerRef.current = null;
+    }
     for (const source of activeSourcesRef.current) {
       try {
         source.stop();
@@ -72,18 +101,13 @@ export function useAudioPlayback() {
       }
     }
     activeSourcesRef.current = [];
+    activeCountRef.current = 0;
     nextPlayTimeRef.current = 0;
   }, []);
 
-  /**
-   * Fallback TTS using browser SpeechSynthesis (for mock mode when no TTS server).
-   */
-  const speakFallback = useCallback((text: string) => {
-    if (!("speechSynthesis" in window)) return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    speechSynthesis.speak(utterance);
+  /** Register a callback for when all playback finishes (for echo gate). */
+  const setOnAllPlaybackFinished = useCallback((cb: (() => void) | null) => {
+    onAllFinishedRef.current = cb;
   }, []);
 
   /** Stop browser SpeechSynthesis. */
@@ -105,8 +129,9 @@ export function useAudioPlayback() {
 
   return {
     playPcmChunk,
+    isPlaying,
     stopAll,
-    speakFallback,
+    setOnAllPlaybackFinished,
     stopFallback,
     dispose,
   };

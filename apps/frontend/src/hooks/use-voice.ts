@@ -11,7 +11,6 @@ interface UseVoiceOptions {
   sessionId: string | null;
   workDir: string;
   model: string;
-  /** Called when voice produces a message to display in chat. */
   onVoiceMessage: (text: string, role: "user" | "assistant") => void;
 }
 
@@ -31,6 +30,10 @@ export function useVoice(options: UseVoiceOptions) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const claudeTextBufferRef = useRef("");
+  // Use ref for ttsMuted to avoid stale closure in WS handler
+  const ttsMutedRef = useRef(false);
+  const onVoiceMessageRef = useRef(onVoiceMessage);
+  onVoiceMessageRef.current = onVoiceMessage;
 
   const {
     playPcmChunk,
@@ -39,18 +42,17 @@ export function useVoice(options: UseVoiceOptions) {
     dispose: disposeAudio,
   } = useAudioPlayback();
 
-  // ── WebSocket message handler ─────────────────────────────────
+  // ── WebSocket message handler (uses refs to avoid stale closures) ──
   const handleWsMessage = useCallback(
     (event: MessageEvent) => {
-      // Binary frame = TTS audio
+      // Binary = TTS audio
       if (event.data instanceof ArrayBuffer) {
-        if (!ttsMuted) playPcmChunk(event.data);
+        if (!ttsMutedRef.current) playPcmChunk(event.data);
         return;
       }
-
       if (event.data instanceof Blob) {
         event.data.arrayBuffer().then((buf) => {
-          if (!ttsMuted) playPcmChunk(buf);
+          if (!ttsMutedRef.current) playPcmChunk(buf);
         });
         return;
       }
@@ -58,22 +60,20 @@ export function useVoice(options: UseVoiceOptions) {
       // JSON message
       try {
         const msg = JSON.parse(event.data);
-        console.log("[voice] Parsed message:", msg.type, msg);
 
         switch (msg.type) {
           case "state":
-            console.log("[voice] Setting state to:", msg.state);
             setState(msg.state);
             break;
 
           case "transcript_final":
             setTranscript(msg.text);
-            onVoiceMessage(msg.text, "user");
+            onVoiceMessageRef.current(msg.text, "user");
             break;
 
           case "claude_text":
             if (msg.done) {
-              onVoiceMessage(claudeTextBufferRef.current, "assistant");
+              onVoiceMessageRef.current(claudeTextBufferRef.current, "assistant");
               claudeTextBufferRef.current = "";
               setClaudeText("");
             } else {
@@ -99,18 +99,14 @@ export function useVoice(options: UseVoiceOptions) {
         // Ignore unparseable messages
       }
     },
-    [ttsMuted, playPcmChunk, onVoiceMessage],
+    [playPcmChunk],
   );
 
   // ── Start a voice call ────────────────────────────────────────
   const startCall = useCallback(async () => {
-    console.log("[voice] startCall triggered");
-    console.log("[voice] navigator.mediaDevices:", !!navigator.mediaDevices);
-
     // Request mic permission
     let stream: MediaStream;
     try {
-      console.log("[voice] Requesting getUserMedia...");
       stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
@@ -119,9 +115,7 @@ export function useVoice(options: UseVoiceOptions) {
           autoGainControl: true,
         },
       });
-      console.log("[voice] Mic access granted");
-    } catch (err) {
-      console.error("[voice] Mic access denied:", err);
+    } catch {
       alert("Microphone access is required for voice mode.");
       return;
     }
@@ -129,14 +123,11 @@ export function useVoice(options: UseVoiceOptions) {
 
     // Connect WebSocket
     const wsUrl = apiUrl.replace(/^http/, "ws") + "/ws/voice";
-    console.log("[voice] Connecting WebSocket:", wsUrl);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
-
     ws.binaryType = "arraybuffer";
 
     ws.onopen = () => {
-      console.log("[voice] WebSocket connected, sending start_call");
       ws.send(
         JSON.stringify({
           type: "start_call",
@@ -144,25 +135,20 @@ export function useVoice(options: UseVoiceOptions) {
           workDir,
           model,
           sessionId: sessionId || undefined,
+          mode: "voice",
         }),
       );
     };
 
-    ws.onmessage = (event) => {
-      console.log("[voice] WS message received:", typeof event.data, event.data instanceof ArrayBuffer ? `binary ${event.data.byteLength}b` : String(event.data).slice(0, 200));
-      handleWsMessage(event);
-    };
+    ws.onmessage = (event) => handleWsMessage(event);
 
-    ws.onclose = (event) => {
-      console.log("[voice] WebSocket closed:", event.code, event.reason);
+    ws.onclose = () => {
       setIsInCall(false);
       setState("idle");
       wsRef.current = null;
     };
 
-    ws.onerror = (event) => {
-      console.error("[voice] WebSocket error:", event);
-    };
+    ws.onerror = () => {};
   }, [apiUrl, clientId, sessionId, workDir, model, handleWsMessage]);
 
   // ── End a voice call ──────────────────────────────────────────
@@ -174,12 +160,11 @@ export function useVoice(options: UseVoiceOptions) {
     ws?.close();
     wsRef.current = null;
 
-    // Release mic
     mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
     mediaStreamRef.current = null;
     mediaRecorderRef.current = null;
+    chunksRef.current = [];
 
-    // Stop audio
     stopAudio();
     stopFallback();
 
@@ -193,7 +178,6 @@ export function useVoice(options: UseVoiceOptions) {
   // ── Toggle recording (click to start, click to stop) ─────────
   const toggleRecording = useCallback(() => {
     if (isRecording) {
-      // Stop recording and send
       setIsRecording(false);
       const ws = wsRef.current;
       const recorder = mediaRecorderRef.current;
@@ -201,37 +185,32 @@ export function useVoice(options: UseVoiceOptions) {
 
       if (recorder && recorder.state !== "inactive") {
         recorder.stop();
-
         recorder.onstop = () => {
           const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
           chunksRef.current = [];
-
-          // Send audio as binary
           blob.arrayBuffer().then((buf) => {
-            ws.send(buf);
-            ws.send(JSON.stringify({ type: "ptt_end" }));
+            // Guard against WS closing while blob was being read
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              wsRef.current.send(buf);
+              wsRef.current.send(JSON.stringify({ type: "ptt_end" }));
+            }
           });
-
           mediaRecorderRef.current = null;
         };
       }
     } else {
-      // Start recording
       const ws = wsRef.current;
       const stream = mediaStreamRef.current;
       if (!ws || ws.readyState !== WebSocket.OPEN || !stream) return;
 
-      // Stop any playing audio
       stopAudio();
       stopFallback();
 
-      // Signal server
       ws.send(JSON.stringify({ type: "ptt_start" }));
       setIsRecording(true);
       setClaudeText("");
       claudeTextBufferRef.current = "";
 
-      // Start recording
       chunksRef.current = [];
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
@@ -241,21 +220,22 @@ export function useVoice(options: UseVoiceOptions) {
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
-      recorder.start(100); // 100ms chunks
+      recorder.start(100);
       mediaRecorderRef.current = recorder;
     }
   }, [isRecording, stopAudio, stopFallback]);
 
-  // ── Send text through voice pipeline (for mock mode / typing during call)
+  // ── Send text through voice pipeline ──────────────────────────
   const sendText = useCallback((text: string) => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN || !text.trim()) return;
     ws.send(JSON.stringify({ type: "text_input", text: text.trim() }));
   }, []);
 
-  // ── TTS mute controls ────────────────────────────────────────
+  // ── TTS mute controls (update both state and ref) ─────────────
   const muteTts = useCallback(() => {
     setTtsMuted(true);
+    ttsMutedRef.current = true;
     stopAudio();
     stopFallback();
     wsRef.current?.send(JSON.stringify({ type: "mute_tts" }));
@@ -263,6 +243,7 @@ export function useVoice(options: UseVoiceOptions) {
 
   const unmuteTts = useCallback(() => {
     setTtsMuted(false);
+    ttsMutedRef.current = false;
     wsRef.current?.send(JSON.stringify({ type: "unmute_tts" }));
   }, []);
 

@@ -4,11 +4,13 @@ import { logger } from "./logger.js";
 /**
  * Transcribe audio via the configured STT service (faster-whisper).
  *
- * @param audioBuffer - Raw audio data (WebM/Opus blob from browser MediaRecorder)
+ * @param audioBuffer - Raw audio data
+ * @param mimeType - Audio MIME type ("audio/webm" for voice mode, "audio/wav" for call mode)
  * @returns Transcribed text, or null if no STT service is configured.
  */
 export async function transcribe(
   audioBuffer: Buffer,
+  mimeType: string = "audio/webm",
 ): Promise<string | null> {
   if (!env.STT_URL) {
     logger.info("[stt] No STT_URL configured — using client-provided transcript");
@@ -17,10 +19,16 @@ export async function transcribe(
 
   try {
     const formData = new FormData();
+    const ext = mimeType === "audio/wav" ? "wav" : "webm";
+    // Slice the underlying ArrayBuffer to avoid referencing shared pool memory
+    const safeBuffer = audioBuffer.buffer.slice(
+      audioBuffer.byteOffset,
+      audioBuffer.byteOffset + audioBuffer.byteLength,
+    );
     formData.append(
       "file",
-      new Blob([audioBuffer.buffer as ArrayBuffer], { type: "audio/webm" }),
-      "audio.webm",
+      new Blob([safeBuffer], { type: mimeType }),
+      `audio.${ext}`,
     );
     formData.append("model", "whisper-1");
 
@@ -38,8 +46,9 @@ export async function transcribe(
     const data = (await res.json()) as { text: string };
     logger.info(`[stt] Transcribed: "${data.text.slice(0, 80)}"`);
     return data.text.trim();
-  } catch (err: any) {
-    logger.error(`[stt] Error: ${err.message}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`[stt] Error: ${message}`);
     return null;
   }
 }

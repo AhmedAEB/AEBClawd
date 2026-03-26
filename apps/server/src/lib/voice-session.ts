@@ -1,5 +1,5 @@
 import { logger } from "./logger.js";
-import type { VoiceSession, VoiceCallState } from "./voice-types.js";
+import type { VoiceSession, VoiceCallState, VoiceMode } from "./voice-types.js";
 
 const voiceSessions = new Map<string, VoiceSession>();
 
@@ -8,6 +8,7 @@ export function createVoiceSession(
   workDir: string,
   model: string,
   sessionId?: string,
+  mode: VoiceMode = "voice",
 ): VoiceSession {
   // Clean up existing session for this client if any
   deleteVoiceSession(clientId);
@@ -16,8 +17,10 @@ export function createVoiceSession(
     clientId,
     sessionId: sessionId || null,
     state: "listening",
+    mode,
     audioChunks: [],
     abortController: null,
+    pipelineBusy: false,
     ttsMuted: false,
     workDir,
     model,

@@ -1,11 +1,14 @@
 export type VoiceCallState = "idle" | "listening" | "thinking" | "speaking";
+export type VoiceMode = "voice" | "call";
 
 export interface VoiceSession {
   clientId: string;
   sessionId: string | null;
   state: VoiceCallState;
+  mode: VoiceMode;
   audioChunks: Buffer[];
   abortController: AbortController | null;
+  pipelineBusy: boolean;
   ttsMuted: boolean;
   workDir: string;
   model: string;
@@ -20,6 +23,7 @@ export type ClientVoiceMessage =
       workDir: string;
       model: string;
       sessionId?: string;
+      mode?: VoiceMode;
     }
   | { type: "ptt_start" }
   | { type: "ptt_end" }
