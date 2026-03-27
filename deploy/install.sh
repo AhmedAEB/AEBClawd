@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ── AEBClawd Installer ──────────────────────────────────────────
-# Usage: bash <(curl -fsSL https://install.aebclawd.com)
+# Usage: bash <(curl -fsSL https://raw.githubusercontent.com/AhmedAEB/AEBClawd/main/deploy/install.sh)
 # ─────────────────────────────────────────────────────────────────
 
 REPO_URL="https://github.com/AhmedAEB/AEBClawd.git"

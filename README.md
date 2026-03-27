@@ -51,7 +51,7 @@ AEBClawd lets you interact with [Claude Code](https://docs.anthropic.com/en/docs
 The recommended way to run AEBClawd in production. A single command sets up everything on a fresh Ubuntu/Debian VPS with an interactive setup wizard.
 
 ```bash
-bash <(curl -fsSL https://install.aebclawd.com)
+bash <(curl -fsSL https://raw.githubusercontent.com/AhmedAEB/AEBClawd/main/deploy/install.sh)
 ```
 
 The installer will:
@@ -113,7 +113,7 @@ AEBClawd runs Claude Code, which installs packages, writes files, and executes c
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/AEBClawd.git
+git clone https://github.com/AhmedAEB/AEBClawd.git
 cd AEBClawd
 ```
 
