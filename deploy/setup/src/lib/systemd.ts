@@ -8,7 +8,6 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=aebclawd
 WorkingDirectory=${config.installDir}/apps/server
 EnvironmentFile=${config.installDir}/.env
 Environment=NODE_ENV=production
@@ -32,7 +31,6 @@ Wants=aebclawd-server.service
 
 [Service]
 Type=simple
-User=aebclawd
 WorkingDirectory=${config.installDir}/apps/frontend
 EnvironmentFile=${config.installDir}/.env
 Environment=NODE_ENV=production
@@ -56,7 +54,6 @@ Wants=aebclawd-server.service
 
 [Service]
 Type=simple
-User=aebclawd
 WorkingDirectory=${config.installDir}/apps/bot
 EnvironmentFile=${config.installDir}/.env
 Environment=NODE_ENV=production

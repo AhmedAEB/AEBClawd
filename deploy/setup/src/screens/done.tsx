@@ -46,7 +46,7 @@ export function Done() {
           <Text />
           <Text>Run the following to log in to your Anthropic account:</Text>
           <Text />
-          <Text bold>  sudo -u aebclawd claude login</Text>
+          <Text bold>  claude login</Text>
           <Text />
           <Text dimColor>This opens a browser-based OAuth flow. After login,</Text>
           <Text dimColor>restart the server: systemctl restart aebclawd-server</Text>

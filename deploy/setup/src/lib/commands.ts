@@ -23,47 +23,16 @@ async function run(cmd: string, args: string[], opts?: Record<string, unknown>):
   return stdout;
 }
 
-export async function createUser(): Promise<void> {
-  // Check if user already exists
-  try {
-    await run("id", ["aebclawd"]);
-    log("User aebclawd already exists, skipping");
-    return;
-  } catch {
-    // User doesn't exist, create it
-  }
-
-  await run("useradd", [
-    "--system",
-    "--shell", "/bin/bash",
-    "--create-home",
-    "--home-dir", "/home/aebclawd",
-    "aebclawd",
-  ]);
-
-  // Grant passwordless sudo
-  writeFileSync(
-    "/etc/sudoers.d/aebclawd",
-    "aebclawd ALL=(ALL) NOPASSWD: ALL\n"
-  );
-  chmodSync("/etc/sudoers.d/aebclawd", 0o440);
-  log("Created user aebclawd with passwordless sudo");
-}
-
 export async function createDirectories(config: WizardConfig): Promise<void> {
   await run("mkdir", ["-p", config.workspacesRoot]);
   await run("mkdir", ["-p", config.dataDir]);
-  await run("chown", ["-R", "aebclawd:aebclawd", config.workspacesRoot]);
-  await run("chown", ["-R", "aebclawd:aebclawd", config.dataDir]);
-  await run("chown", ["-R", "aebclawd:aebclawd", config.installDir]);
-  log("Created directories and set ownership");
+  log("Created directories");
 }
 
 export async function writeEnv(config: WizardConfig): Promise<void> {
   const envContent = generateEnvContent(config);
   const envPath = `${config.installDir}/.env`;
   writeFileSync(envPath, envContent);
-  await run("chown", ["aebclawd:aebclawd", envPath]);
   await run("chmod", ["600", envPath]);
   log(`Wrote .env to ${envPath}`);
 }
@@ -125,35 +94,30 @@ export async function installDocker(): Promise<void> {
   if (script.stdout) {
     await execa("sh", ["-s"], { input: script.stdout, reject: false });
   }
-  await run("usermod", ["-aG", "docker", "aebclawd"]);
   log("Docker installed");
 }
 
 export async function installClaudeCli(): Promise<void> {
-  // Check if already installed at the system-wide path
-  if (existsSync("/usr/local/bin/claude")) {
+  // Check if already installed
+  try {
+    await run("claude", ["--version"]);
     log("Claude CLI already installed, skipping");
     return;
+  } catch {
+    // Not installed, proceed
   }
 
   // Download install script to a temp file (piping causes curl write errors)
   await run("curl", ["-fsSL", "https://claude.ai/install.sh", "-o", "/tmp/claude-install.sh"]);
+  await execa("bash", ["/tmp/claude-install.sh"], { reject: false });
 
-  // Install as root (goes to ~/.local/bin/claude)
-  await execa("bash", ["/tmp/claude-install.sh"], {
-    reject: false,
-    env: { ...process.env, HOME: "/root" },
-  });
-
-  // Copy to /usr/local/bin so all users (including aebclawd) can access it
-  const rootClaude = "/root/.local/bin/claude";
-  if (existsSync(rootClaude)) {
-    await run("cp", [rootClaude, "/usr/local/bin/claude"]);
+  // Ensure it's on PATH system-wide
+  const localBin = "/root/.local/bin/claude";
+  if (existsSync(localBin) && !existsSync("/usr/local/bin/claude")) {
+    await run("cp", [localBin, "/usr/local/bin/claude"]);
     chmodSync("/usr/local/bin/claude", 0o755);
-    log("Claude CLI installed to /usr/local/bin/claude");
-  } else {
-    throw new Error("Claude CLI binary not found after install");
   }
+  log("Claude CLI installed");
 }
 
 export async function installDeps(config: WizardConfig): Promise<void> {

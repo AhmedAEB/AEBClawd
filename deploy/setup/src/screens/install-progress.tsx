@@ -9,7 +9,6 @@ import * as commands from "../lib/commands.js";
 type CommandFn = (config: any) => Promise<void>;
 
 const STEP_COMMANDS: Record<string, CommandFn> = {
-  user: () => commands.createUser(),
   dirs: (config) => commands.createDirectories(config),
   env: (config) => commands.writeEnv(config),
   "caddy-install": () => commands.installCaddy(),

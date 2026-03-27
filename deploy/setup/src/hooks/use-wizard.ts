@@ -3,7 +3,6 @@ import type { WizardState, WizardAction, InstallStep } from "../types.js";
 import { Step } from "../types.js";
 
 export const DEFAULT_INSTALL_STEPS: InstallStep[] = [
-  { id: "user", label: "Creating system user", status: "pending" },
   { id: "dirs", label: "Creating directories", status: "pending" },
   { id: "env", label: "Writing .env configuration", status: "pending" },
   { id: "caddy-install", label: "Installing Caddy", status: "pending" },
@@ -44,7 +43,7 @@ export const initialState: WizardState = {
     voiceEnabled: false,
     bots: {},
     installDir: "/opt/aebclawd",
-    workspacesRoot: "/home/aebclawd/workspaces",
+    workspacesRoot: "/root/workspaces",
     dataDir: "/opt/aebclawd/data",
   },
   installSteps: DEFAULT_INSTALL_STEPS,
