@@ -3,7 +3,7 @@
 import { createContext, useContext } from "react";
 import { useVoice, type VoiceState } from "../hooks/use-voice";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 const STATE_LABELS: Record<VoiceState, string> = {
   idle: "",

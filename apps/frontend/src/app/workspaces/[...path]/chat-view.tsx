@@ -7,7 +7,7 @@ import { VoiceProvider, VoiceButton, VoicePanel, useVoiceContext } from "@/compo
 import { CallProvider, CallButton, CallPanel, useCallContext } from "@/components/call-mode";
 import SourceControlSidebar from "./source-control";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 /** Renders VoiceButton and CallButton with mutual exclusion — only one mode active at a time. */
 function MutualExclusiveButtons({ isConnected, isStreaming }: { isConnected: boolean; isStreaming: boolean }) {

@@ -122,7 +122,9 @@ export function useVoice(options: UseVoiceOptions) {
     mediaStreamRef.current = stream;
 
     // Connect WebSocket
-    const wsUrl = apiUrl.replace(/^http/, "ws") + "/ws/voice";
+    const wsUrl = apiUrl
+      ? apiUrl.replace(/^http/, "ws") + "/ws/voice"
+      : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws/voice`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     ws.binaryType = "arraybuffer";

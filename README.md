@@ -11,7 +11,7 @@
 
 **A self-hosted web interface for Claude Code — use it from anywhere, on any device.**
 
-[Getting Started](#getting-started) · [Features](#features) · [API Reference](#api-endpoints) · [Voice Mode](#voice-mode) · [Configuration](#configuration)
+[Deploy to VPS](#deploy-to-vps) · [Local Development](#local-development) · [Features](#features) · [API Reference](#api-endpoints) · [Voice Mode](#voice-mode) · [Configuration](#configuration)
 
 </div>
 
@@ -46,15 +46,69 @@ AEBClawd lets you interact with [Claude Code](https://docs.anthropic.com/en/docs
 | Voice | Whisper STT, Kokoro TTS (Docker) |
 | Monorepo | pnpm workspaces |
 
-## Prerequisites
+## Deploy to VPS
+
+The recommended way to run AEBClawd in production. A single command sets up everything on a fresh Ubuntu/Debian VPS with an interactive setup wizard.
+
+```bash
+bash <(curl -fsSL https://install.aebclawd.com)
+```
+
+The installer will:
+
+1. Install Node.js 20, pnpm, and system dependencies
+2. Clone the repository to `/opt/aebclawd`
+3. Launch an interactive TUI wizard that walks you through:
+   - Domain configuration (HTTPS via Caddy, or IP-only mode)
+   - Anthropic API key
+   - Basic auth credentials
+   - Voice mode (optional, requires Docker)
+   - Bot integrations (Telegram, Slack, Discord, Teams, GitHub)
+4. Build all services and start them via systemd
+5. Configure Caddy reverse proxy with automatic HTTPS
+6. Set up UFW firewall (ports 22, 80, 443)
+
+### Requirements
+
+- Ubuntu or Debian VPS (2GB+ RAM, 10GB+ disk)
+- Root access
+- Domain pointed at the VPS (optional — IP-only mode available for testing)
+
+### Management
+
+```bash
+# Update to latest version
+sudo /opt/aebclawd/deploy/update.sh
+
+# Reconfigure settings
+sudo node /opt/aebclawd/deploy/setup/dist/index.js
+
+# View logs
+journalctl -u aebclawd-server -f
+journalctl -u aebclawd-frontend -f
+
+# Restart services
+sudo systemctl restart aebclawd-server aebclawd-frontend
+
+# Uninstall
+sudo /opt/aebclawd/deploy/uninstall.sh
+```
+
+### Why VPS over PaaS?
+
+AEBClawd runs Claude Code, which installs packages, writes files, and executes commands. On platforms like Railway or Render, the filesystem is ephemeral — everything Claude installs disappears on the next deploy. A VPS gives you a persistent filesystem where runtime changes survive restarts and updates.
+
+---
+
+## Local Development
+
+### Prerequisites
 
 - [Node.js](https://nodejs.org/) (v20+)
 - [pnpm](https://pnpm.io/) (v9+)
 - An [Anthropic API key](https://console.anthropic.com/)
 - [Docker](https://www.docker.com/) (optional, for voice mode)
 - [Expo CLI](https://docs.expo.dev/) (optional, for mobile development)
-
-## Getting Started
 
 ### 1. Clone the repository
 
@@ -75,12 +129,7 @@ Create a `.env` file in the project root:
 
 ```env
 WORKSPACES_ROOT="/path/to/your/workspaces"
-```
-
-Set your Anthropic API key as an environment variable:
-
-```bash
-export ANTHROPIC_API_KEY="your-api-key"
+ANTHROPIC_API_KEY="your-api-key"
 ```
 
 ### 4. Start development servers
@@ -139,6 +188,16 @@ AEBClawd/
 │   └── bot/                  # Multi-platform chatbot (Slack, Discord, Teams, Telegram, GitHub)
 ├── packages/
 │   └── core/                 # Shared library (Claude SDK wrapper, paths, env, logger)
+├── deploy/
+│   ├── install.sh            # One-command VPS installer (curl target)
+│   ├── update.sh             # Pull, rebuild, restart
+│   ├── uninstall.sh          # Clean removal
+│   └── setup/                # Interactive TUI wizard (Ink/React)
+│       └── src/
+│           ├── screens/           # 9 wizard screens (welcome → done)
+│           ├── components/        # Reusable TUI components
+│           ├── hooks/             # State management (useReducer)
+│           └── lib/               # System commands, generators
 ├── docker/
 │   └── stt/                  # Speech-to-Text Docker image (Whisper)
 ├── docker-compose.yml        # Voice services (STT & TTS, GPU/CPU variants)
@@ -261,7 +320,7 @@ TTS_URL="http://localhost:8880"
 | `WORKSPACES_ROOT` | Yes | — | Root directory for workspace browsing |
 | `ANTHROPIC_API_KEY` | Yes | — | Your Anthropic API key |
 | `PORT` | No | `3001` | Backend server port |
-| `NEXT_PUBLIC_API_URL` | No | `http://localhost:3001` | Backend URL for the frontend |
+| `NEXT_PUBLIC_API_URL` | No | `""` (relative) | Backend URL for the frontend (set for local dev, leave empty behind a reverse proxy) |
 | `STT_URL` | No | — | Speech-to-Text service URL |
 | `TTS_URL` | No | — | Text-to-Speech service URL |
 
