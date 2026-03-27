@@ -57,6 +57,7 @@ corepack enable 2>/dev/null || true
 corepack prepare pnpm@latest --activate 2>/dev/null || npm install -g pnpm >/dev/null 2>&1
 
 # ── Clone or update repo ──
+git config --global --add safe.directory "$INSTALL_DIR" 2>/dev/null || true
 if [[ -d "$INSTALL_DIR/.git" ]]; then
   echo "=> Updating existing installation..."
   cd "$INSTALL_DIR"
