@@ -7,6 +7,8 @@ set -euo pipefail
 
 REPO_URL="https://github.com/AhmedAEB/AEBClawd.git"
 INSTALL_DIR="/opt/aebclawd"
+MIN_RAM_MB=1500
+MIN_DISK_GB=5
 
 echo ""
 echo "  ╔═══════════════════════════════════════╗"
@@ -29,6 +31,52 @@ if ! grep -qi 'ubuntu\|debian' /etc/os-release 2>/dev/null; then
   read -p "Continue anyway? [y/N] " -n 1 -r
   echo
   [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+fi
+
+# ── Check disk space ──
+DISK_AVAIL_KB=$(df / --output=avail | tail -1 | tr -d ' ')
+DISK_AVAIL_GB=$((DISK_AVAIL_KB / 1024 / 1024))
+if [[ $DISK_AVAIL_GB -lt $MIN_DISK_GB ]]; then
+  echo "ERROR: Not enough disk space. Need at least ${MIN_DISK_GB}GB, have ${DISK_AVAIL_GB}GB."
+  exit 1
+fi
+echo "=> Disk: ${DISK_AVAIL_GB}GB available"
+
+# ── Check RAM + auto-create swap if needed ──
+TOTAL_RAM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
+TOTAL_SWAP_MB=$(awk '/SwapTotal/ {print int($2/1024)}' /proc/meminfo)
+EFFECTIVE_MB=$((TOTAL_RAM_MB + TOTAL_SWAP_MB))
+echo "=> RAM: ${TOTAL_RAM_MB}MB | Swap: ${TOTAL_SWAP_MB}MB"
+
+if [[ $EFFECTIVE_MB -lt $MIN_RAM_MB ]]; then
+  # Calculate how much swap we need (aim for RAM + swap >= 2GB)
+  SWAP_NEEDED_MB=$((2048 - EFFECTIVE_MB))
+  # Minimum 1GB swap, round up to nearest GB
+  SWAP_GB=$(( (SWAP_NEEDED_MB + 1023) / 1024 ))
+  [[ $SWAP_GB -lt 1 ]] && SWAP_GB=1
+
+  # Check we have enough disk for swap (need swap + MIN_DISK_GB)
+  SWAP_KB=$((SWAP_GB * 1024 * 1024))
+  if [[ $((DISK_AVAIL_KB - SWAP_KB)) -lt $((MIN_DISK_GB * 1024 * 1024)) ]]; then
+    echo "WARNING: Not enough disk for ${SWAP_GB}GB swap + ${MIN_DISK_GB}GB install."
+    echo "Builds may fail due to low memory. Continuing anyway..."
+  else
+    if [[ ! -f /swapfile ]]; then
+      echo "=> Low memory detected. Creating ${SWAP_GB}GB swap..."
+      fallocate -l ${SWAP_GB}G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=$((SWAP_GB * 1024)) status=none
+      chmod 600 /swapfile
+      mkswap /swapfile >/dev/null
+      swapon /swapfile
+      # Persist across reboots
+      if ! grep -q '/swapfile' /etc/fstab; then
+        echo '/swapfile none swap sw 0 0' >> /etc/fstab
+      fi
+      echo "   Swap created and activated."
+    else
+      echo "=> Swapfile already exists, ensuring it's active..."
+      swapon /swapfile 2>/dev/null || true
+    fi
+  fi
 fi
 
 echo "=> Installing system dependencies..."
