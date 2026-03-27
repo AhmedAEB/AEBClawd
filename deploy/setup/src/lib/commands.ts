@@ -130,20 +130,30 @@ export async function installDocker(): Promise<void> {
 }
 
 export async function installClaudeCli(): Promise<void> {
-  // Check if already installed
-  try {
-    await run("claude", ["--version"]);
+  // Check if already installed at the system-wide path
+  if (existsSync("/usr/local/bin/claude")) {
     log("Claude CLI already installed, skipping");
     return;
-  } catch {
-    // Not installed, proceed
   }
 
-  const script = await execa("curl", ["-fsSL", "https://claude.ai/install.sh"], { reject: false });
-  if (script.stdout) {
-    await execa("bash", ["-s"], { input: script.stdout, reject: false, env: { ...process.env, HOME: "/home/aebclawd" } });
+  // Download install script to a temp file (piping causes curl write errors)
+  await run("curl", ["-fsSL", "https://claude.ai/install.sh", "-o", "/tmp/claude-install.sh"]);
+
+  // Install as root (goes to ~/.local/bin/claude)
+  await execa("bash", ["/tmp/claude-install.sh"], {
+    reject: false,
+    env: { ...process.env, HOME: "/root" },
+  });
+
+  // Copy to /usr/local/bin so all users (including aebclawd) can access it
+  const rootClaude = "/root/.local/bin/claude";
+  if (existsSync(rootClaude)) {
+    await run("cp", [rootClaude, "/usr/local/bin/claude"]);
+    chmodSync("/usr/local/bin/claude", 0o755);
+    log("Claude CLI installed to /usr/local/bin/claude");
+  } else {
+    throw new Error("Claude CLI binary not found after install");
   }
-  log("Claude CLI installed");
 }
 
 export async function installDeps(config: WizardConfig): Promise<void> {
