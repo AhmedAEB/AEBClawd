@@ -6,10 +6,16 @@ export function generateCaddyfile(config: WizardConfig, hashedPassword: string):
   const siteAddress =
     domainConfig.mode === "domain" ? domainConfig.domain! : ":80";
 
-  const autoHttpsDirective =
-    domainConfig.mode === "ip-only" ? "\n\tauto_https off" : "";
+  const globalBlock =
+    domainConfig.mode === "ip-only"
+      ? `{
+\tauto_https off
+}
 
-  return `${siteAddress} {${autoHttpsDirective}
+`
+      : "";
+
+  return `${globalBlock}${siteAddress} {
 \tbasicauth * {
 \t\t${basicAuth.username} ${hashedPassword}
 \t}

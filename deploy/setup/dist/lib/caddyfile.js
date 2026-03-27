@@ -1,8 +1,14 @@
 export function generateCaddyfile(config, hashedPassword) {
     const { domain: domainConfig, basicAuth } = config;
     const siteAddress = domainConfig.mode === "domain" ? domainConfig.domain : ":80";
-    const autoHttpsDirective = domainConfig.mode === "ip-only" ? "\n\tauto_https off" : "";
-    return `${siteAddress} {${autoHttpsDirective}
+    const globalBlock = domainConfig.mode === "ip-only"
+        ? `{
+\tauto_https off
+}
+
+`
+        : "";
+    return `${globalBlock}${siteAddress} {
 \tbasicauth * {
 \t\t${basicAuth.username} ${hashedPassword}
 \t}
