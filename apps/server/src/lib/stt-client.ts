@@ -21,10 +21,7 @@ export async function transcribe(
     const formData = new FormData();
     const ext = mimeType === "audio/wav" ? "wav" : "webm";
     // Slice the underlying ArrayBuffer to avoid referencing shared pool memory
-    const safeBuffer = audioBuffer.buffer.slice(
-      audioBuffer.byteOffset,
-      audioBuffer.byteOffset + audioBuffer.byteLength,
-    );
+    const safeBuffer = new Uint8Array(audioBuffer).buffer;
     formData.append(
       "file",
       new Blob([safeBuffer], { type: mimeType }),
