@@ -110,6 +110,22 @@ export async function installDocker() {
     await run("usermod", ["-aG", "docker", "aebclawd"]);
     log("Docker installed");
 }
+export async function installClaudeCli() {
+    // Check if already installed
+    try {
+        await run("claude", ["--version"]);
+        log("Claude CLI already installed, skipping");
+        return;
+    }
+    catch {
+        // Not installed, proceed
+    }
+    const script = await execa("curl", ["-fsSL", "https://claude.ai/install.sh"], { reject: false });
+    if (script.stdout) {
+        await execa("bash", ["-s"], { input: script.stdout, reject: false, env: { ...process.env, HOME: "/home/aebclawd" } });
+    }
+    log("Claude CLI installed");
+}
 export async function installDeps(config) {
     await run("pnpm", ["install"], { cwd: config.installDir });
     log("Dependencies installed");

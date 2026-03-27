@@ -15,6 +15,7 @@ const STEP_COMMANDS: Record<string, CommandFn> = {
   "caddy-install": () => commands.installCaddy(),
   caddyfile: (config) => commands.writeCaddyfile(config),
   docker: () => commands.installDocker(),
+  "claude-cli": () => commands.installClaudeCli(),
   "pnpm-install": (config) => commands.installDeps(config),
   "build-frontend": (config) => commands.buildFrontend(config),
   "build-server": (config) => commands.buildServer(config),

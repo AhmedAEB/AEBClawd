@@ -12,6 +12,7 @@ export const DEFAULT_INSTALL_STEPS = [
         status: "pending",
         condition: (c) => c.voiceEnabled,
     },
+    { id: "claude-cli", label: "Installing Claude Code CLI", status: "pending" },
     { id: "pnpm-install", label: "Installing dependencies", status: "pending" },
     { id: "build-frontend", label: "Building frontend", status: "pending" },
     { id: "build-server", label: "Building server", status: "pending" },

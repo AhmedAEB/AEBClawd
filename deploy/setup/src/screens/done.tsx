@@ -6,6 +6,7 @@ import { TOTAL_STEPS } from "../types.js";
 export function Done() {
   const { state } = useWizard();
   const { config } = state;
+  const needsCliAuth = !config.anthropicApiKey;
 
   useInput(() => {
     process.exit(0);
@@ -38,6 +39,19 @@ export function Done() {
         <Text>Username: {config.basicAuth.username}</Text>
         <Text>Password: {"*".repeat(config.basicAuth.password.length)}</Text>
       </Box>
+
+      {needsCliAuth && (
+        <Box marginTop={1} flexDirection="column" borderStyle="single" paddingX={2} paddingY={1}>
+          <Text bold color="yellow">NEXT STEP: Authenticate Claude</Text>
+          <Text />
+          <Text>Run the following to log in to your Anthropic account:</Text>
+          <Text />
+          <Text bold>  sudo -u aebclawd claude login</Text>
+          <Text />
+          <Text dimColor>This opens a browser-based OAuth flow. After login,</Text>
+          <Text dimColor>restart the server: systemctl restart aebclawd-server</Text>
+        </Box>
+      )}
 
       <Box marginTop={1} flexDirection="column">
         <Text bold>USEFUL COMMANDS</Text>

@@ -6,7 +6,7 @@ export function generateEnvContent(config: WizardConfig): string {
     `# Generated on ${new Date().toISOString()}`,
     "",
     "# Required",
-    `ANTHROPIC_API_KEY=${config.anthropicApiKey}`,
+    ...(config.anthropicApiKey ? [`ANTHROPIC_API_KEY=${config.anthropicApiKey}`] : ["# ANTHROPIC_API_KEY not set — authenticate via: sudo -u aebclawd claude"]),
     `WORKSPACES_ROOT=${config.workspacesRoot}`,
     `DATA_DIR=${config.dataDir}`,
     `PORT=3001`,
