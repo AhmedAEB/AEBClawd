@@ -67,10 +67,11 @@ else
   git clone "$REPO_URL" "$INSTALL_DIR"
 fi
 
-# ── Install setup wizard dependencies ──
+# ── Build setup wizard ──
 echo "=> Preparing setup wizard..."
 cd "$INSTALL_DIR/deploy/setup"
-npm install --production --silent 2>/dev/null || pnpm install --prod 2>/dev/null
+npm install --silent 2>/dev/null || pnpm install 2>/dev/null
+npx tsc 2>/dev/null
 
 echo ""
 echo "=> Launching interactive setup wizard..."
