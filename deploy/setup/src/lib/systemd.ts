@@ -11,6 +11,7 @@ Type=simple
 WorkingDirectory=${config.installDir}/apps/server
 EnvironmentFile=${config.installDir}/.env
 Environment=NODE_ENV=production
+Environment=HOME=/root
 ExecStart=/usr/bin/node dist/index.js
 Restart=always
 RestartSec=5
@@ -34,6 +35,7 @@ Type=simple
 WorkingDirectory=${config.installDir}/apps/frontend
 EnvironmentFile=${config.installDir}/.env
 Environment=NODE_ENV=production
+Environment=HOME=/root
 ExecStart=/usr/bin/npx next start -p 3000
 Restart=always
 RestartSec=5
@@ -57,6 +59,7 @@ Type=simple
 WorkingDirectory=${config.installDir}/apps/bot
 EnvironmentFile=${config.installDir}/.env
 Environment=NODE_ENV=production
+Environment=HOME=/root
 ExecStart=/usr/bin/node dist/index.js
 Restart=always
 RestartSec=10
