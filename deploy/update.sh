@@ -29,6 +29,16 @@ if systemctl is-enabled aebclawd-bot 2>/dev/null; then
   pnpm --filter bot build
 fi
 
+# Ensure HOME=/root is set in all service files (needed for git/gh auth)
+for svc in aebclawd-server aebclawd-frontend aebclawd-bot; do
+  svc_file="/etc/systemd/system/${svc}.service"
+  if [[ -f "$svc_file" ]] && ! grep -q 'Environment=HOME=' "$svc_file"; then
+    sed -i '/Environment=NODE_ENV=production/a Environment=HOME=/root' "$svc_file"
+    echo "   Patched $svc with HOME=/root"
+  fi
+done
+systemctl daemon-reload
+
 echo "=> Restarting services..."
 systemctl restart aebclawd-server aebclawd-frontend
 
