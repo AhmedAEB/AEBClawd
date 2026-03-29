@@ -133,7 +133,7 @@ export default function ChatView({
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const permMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const clientIdRef = useRef(crypto.randomUUID());
+  const clientIdRef = useRef(typeof crypto.randomUUID === "function" ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
   const eventSourceRef = useRef<EventSource | null>(null);
   const streamBufferRef = useRef("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
