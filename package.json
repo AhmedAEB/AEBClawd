@@ -9,5 +9,8 @@
     "mobile:dev": "pnpm --filter mobile start",
     "mobile:ios": "pnpm --filter mobile ios",
     "mobile:android": "pnpm --filter mobile android"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["node-pty"]
   }
 }

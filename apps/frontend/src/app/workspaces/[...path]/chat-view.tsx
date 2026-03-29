@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, lazy, Suspense } from "react";
 import Link from "next/link";
 import { Markdown } from "@/components/markdown";
 import { VoiceProvider, VoiceButton, VoicePanel, useVoiceContext } from "@/components/voice-mode";
 import { CallProvider, CallButton, CallPanel, useCallContext } from "@/components/call-mode";
 import SourceControlSidebar from "./source-control";
+
+const TerminalPanel = lazy(() => import("@/components/terminal"));
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -120,6 +122,7 @@ export default function ChatView({
   }>({});
   const [historyLoading, setHistoryLoading] = useState(!isNewSession);
   const [scOpen, setScOpen] = useState(false);
+  const [termOpen, setTermOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState("");
   const [availableModels, setAvailableModels] = useState<
     { value: string; displayName: string; description: string }[]
@@ -807,6 +810,16 @@ export default function ChatView({
             }`}
           />
           <button
+            onClick={() => setTermOpen((v) => !v)}
+            className={`ml-1 p-1 transition-colors ${termOpen ? "bg-fg text-void" : "text-fg-3 hover:text-fg"}`}
+            aria-label="Toggle terminal"
+            title="Terminal"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+              <path fillRule="evenodd" d="M2 4.25A2.25 2.25 0 0 1 4.25 2h7.5A2.25 2.25 0 0 1 14 4.25v7.5A2.25 2.25 0 0 1 11.75 14h-7.5A2.25 2.25 0 0 1 2 11.75v-7.5ZM4.75 6a.75.75 0 0 1 .53-.22.75.75 0 0 1 .53.22L7.5 7.69 5.81 9.38a.75.75 0 1 1-1.06-1.06l.94-.94-.94-.94A.75.75 0 0 1 4.75 6ZM8.25 9.5a.75.75 0 0 0 0 1.5h2a.75.75 0 0 0 0-1.5h-2Z" clipRule="evenodd" />
+            </svg>
+          </button>
+          <button
             onClick={() => setScOpen((v) => !v)}
             className={`ml-1 p-1 transition-colors ${scOpen ? "bg-fg text-void" : "text-fg-3 hover:text-fg"}`}
             aria-label="Toggle source control"
@@ -1073,7 +1086,7 @@ export default function ChatView({
       </VoiceProvider>
       </div>
 
-      {/* Source control sidebar — full overlay on mobile, inline panel on desktop */}
+      {/* Source control sidebar �� full overlay on mobile, inline panel on desktop */}
       {scOpen && (
         <div className="fixed inset-0 z-40 bg-void md:static md:inset-auto md:z-auto md:w-[360px] md:shrink-0 md:border-l-2 md:border-edge">
           <SourceControlSidebar
@@ -1089,6 +1102,20 @@ export default function ChatView({
         </div>
       )}
       </div>
+
+      {/* Terminal panel — outside the flex row so it spans full width at the bottom */}
+      {termOpen && (
+        <Suspense fallback={
+          <div className="flex items-center justify-center border-t-2 border-edge py-8">
+            <div className="h-4 w-4 animate-spin border-2 border-panel-3 border-t-fg" />
+          </div>
+        }>
+          <TerminalPanel
+            relativePath={relativePath}
+            onClose={() => setTermOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

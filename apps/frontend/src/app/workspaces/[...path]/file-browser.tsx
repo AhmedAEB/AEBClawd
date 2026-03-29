@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import Link from "next/link";
+
+const TerminalPanel = lazy(() => import("@/components/terminal"));
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -20,6 +22,7 @@ export default function FileBrowser({ relativePath }: { relativePath: string }) 
   const [newFolderName, setNewFolderName] = useState("");
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [showTerminal, setShowTerminal] = useState(false);
 
   const pathSegments = relativePath.split("/").filter(Boolean);
   const dirName = pathSegments[pathSegments.length - 1] ?? "root";
@@ -67,8 +70,8 @@ export default function FileBrowser({ relativePath }: { relativePath: string }) 
   };
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
-      <div className="mx-auto w-full max-w-2xl px-6 py-8">
+    <div className="flex h-full flex-col">
+      <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-6 py-8">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-1 text-[11px] font-mono text-fg-3">
           <Link href="/workspaces" className="hover:text-fg transition-colors" aria-label="Home">
@@ -104,12 +107,20 @@ export default function FileBrowser({ relativePath }: { relativePath: string }) 
               Open Sessions
             </Link>
           </div>
-          <button
-            onClick={() => setShowNewFolder(!showNewFolder)}
-            className="border-2 border-fg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-fg transition-colors hover:bg-panel-2"
-          >
-            New Folder
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowTerminal(!showTerminal)}
+              className={`${showTerminal ? "bg-fg text-void" : "border-2 border-fg text-fg hover:bg-panel-2"} px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition-colors`}
+            >
+              Terminal
+            </button>
+            <button
+              onClick={() => setShowNewFolder(!showNewFolder)}
+              className="border-2 border-fg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-fg transition-colors hover:bg-panel-2"
+            >
+              New Folder
+            </button>
+          </div>
         </div>
 
         {showNewFolder && (
@@ -194,6 +205,18 @@ export default function FileBrowser({ relativePath }: { relativePath: string }) 
           </div>
         )}
       </div>
+      {showTerminal && (
+        <Suspense fallback={
+          <div className="flex items-center justify-center border-t-2 border-edge py-8">
+            <div className="h-4 w-4 animate-spin border-2 border-panel-3 border-t-fg" />
+          </div>
+        }>
+          <TerminalPanel
+            relativePath={relativePath}
+            onClose={() => setShowTerminal(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

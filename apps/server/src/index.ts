@@ -85,12 +85,14 @@ import filesystem from "./routes/filesystem.js";
 import git from "./routes/git.js";
 import models from "./routes/models.js";
 import { createVoiceHandler } from "./routes/voice.js";
+import { createTerminalHandler } from "./routes/terminal.js";
 
 const app = new Hono();
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
-// WebSocket route MUST be mounted before cors() middleware
+// WebSocket routes MUST be mounted before cors() middleware
 app.get("/ws/voice", createVoiceHandler(upgradeWebSocket));
+app.get("/ws/terminal", createTerminalHandler(upgradeWebSocket));
 
 // CORS for HTTP API routes only
 app.use("/api/*", cors());
