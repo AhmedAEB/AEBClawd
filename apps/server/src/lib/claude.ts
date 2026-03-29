@@ -70,6 +70,7 @@ export async function runQuery(
           ...(options.resumeId ? { resume: options.resumeId } : {}),
           ...(options.model ? { model: options.model } : {}),
           ...(options.permissionMode ? { permissionMode: options.permissionMode as PermissionMode } : {}),
+          ...(options.permissionMode === "bypassPermissions" ? { allowDangerouslySkipPermissions: true } : {}),
           systemPrompt: { type: "preset", preset: "claude_code" },
           canUseTool: async (toolName, input, opts) => {
             if (toolName === "AskUserQuestion") {
