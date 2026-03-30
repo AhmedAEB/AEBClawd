@@ -8,6 +8,7 @@ import { CallProvider, CallButton, CallPanel, useCallContext } from "@/component
 import SourceControlSidebar from "./source-control";
 
 const TerminalPanel = lazy(() => import("@/components/terminal"));
+const FileBrowserSidebar = lazy(() => import("./file-browser-sidebar"));
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -123,6 +124,7 @@ export default function ChatView({
   const [historyLoading, setHistoryLoading] = useState(!isNewSession);
   const [scOpen, setScOpen] = useState(false);
   const [termOpen, setTermOpen] = useState(false);
+  const [fbOpen, setFbOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState("");
   const [availableModels, setAvailableModels] = useState<
     { value: string; displayName: string; description: string }[]
@@ -820,6 +822,16 @@ export default function ChatView({
             </svg>
           </button>
           <button
+            onClick={() => setFbOpen((v) => !v)}
+            className={`ml-1 p-1 transition-colors ${fbOpen ? "bg-fg text-void" : "text-fg-3 hover:text-fg"}`}
+            aria-label="Toggle file browser"
+            title="Files"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
+              <path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v9A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 12.5 4H9.621a1.5 1.5 0 0 1-1.06-.44L7.439 2.44A1.5 1.5 0 0 0 6.379 2H3.5Z" />
+            </svg>
+          </button>
+          <button
             onClick={() => setScOpen((v) => !v)}
             className={`ml-1 p-1 transition-colors ${scOpen ? "bg-fg text-void" : "text-fg-3 hover:text-fg"}`}
             aria-label="Toggle source control"
@@ -1087,6 +1099,21 @@ export default function ChatView({
       </div>
 
       {/* Source control sidebar �� full overlay on mobile, inline panel on desktop */}
+      {fbOpen && (
+        <div className="fixed inset-0 z-40 bg-void md:static md:inset-auto md:z-auto md:w-[480px] md:shrink-0 md:border-l-2 md:border-edge">
+          <Suspense fallback={
+            <div className="flex h-full items-center justify-center">
+              <div className="h-4 w-4 animate-spin border-2 border-panel-3 border-t-fg" />
+            </div>
+          }>
+            <FileBrowserSidebar
+              relativePath={relativePath}
+              onClose={() => setFbOpen(false)}
+            />
+          </Suspense>
+        </div>
+      )}
+
       {scOpen && (
         <div className="fixed inset-0 z-40 bg-void md:static md:inset-auto md:z-auto md:w-[360px] md:shrink-0 md:border-l-2 md:border-edge">
           <SourceControlSidebar

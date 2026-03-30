@@ -36,7 +36,7 @@ export default function FileBrowser({ relativePath }: { relativePath: string }) 
       const data = await res.json();
       setEntries(data.entries ?? []);
     } catch (err) {
-      console.error("Failed to fetch directories:", err);
+      console.error("Failed to fetch entries:", err);
     } finally {
       setLoading(false);
     }
@@ -156,7 +156,7 @@ export default function FileBrowser({ relativePath }: { relativePath: string }) 
           </div>
         ) : entries.length === 0 ? (
           <div className="py-16 text-center text-sm text-fg-3">
-            No subdirectories. Use "Open Sessions" to view sessions for this directory.
+            Empty directory. Use "Open Sessions" to start a Claude session here.
           </div>
         ) : (
           <div className="space-y-0">
@@ -165,40 +165,57 @@ export default function FileBrowser({ relativePath }: { relativePath: string }) 
                 key={entry.name}
                 className="group flex items-center border-b border-edge transition-colors hover:bg-panel-2"
               >
-                <Link
-                  href={`/workspaces/${encodePath(relativePath)}/${encodeURIComponent(entry.name)}`}
-                  className="flex-1 px-4 py-3 text-[13px] text-fg-2 group-hover:text-fg"
-                >
-                  {entry.name}
-                </Link>
-                <Link
-                  href={`/workspaces/${encodePath(relativePath)}/${encodeURIComponent(entry.name)}/sessions`}
-                  className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-fg-3 transition-colors hover:text-fg"
-                >
-                  Sessions
-                </Link>
-                {deleteConfirm === entry.name ? (
-                  <div className="flex items-center gap-1 pr-4">
-                    <button
-                      onClick={() => deleteFolder(entry.name)}
-                      className="px-2 py-1 text-[10px] font-semibold uppercase text-fg transition-colors hover:bg-panel-3"
+                {entry.isDirectory ? (
+                  <>
+                    <Link
+                      href={`/workspaces/${encodePath(relativePath)}/${encodeURIComponent(entry.name)}`}
+                      className="flex flex-1 items-center gap-2 px-4 py-3 text-[13px] text-fg-2 group-hover:text-fg"
                     >
-                      Confirm
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirm(null)}
-                      className="px-2 py-1 text-[10px] font-semibold uppercase text-fg-3 transition-colors hover:text-fg"
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-fg-3">
+                        <path d="M3.75 3A1.75 1.75 0 0 0 2 4.75v3.26a3.235 3.235 0 0 1 1.75-.51h12.5c.644 0 1.245.188 1.75.51V6.75A1.75 1.75 0 0 0 16.25 5h-4.836a.25.25 0 0 1-.177-.073L9.823 3.513A1.75 1.75 0 0 0 8.586 3H3.75ZM3.75 9A1.75 1.75 0 0 0 2 10.75v4.5c0 .966.784 1.75 1.75 1.75h12.5A1.75 1.75 0 0 0 18 15.25v-4.5A1.75 1.75 0 0 0 16.25 9H3.75Z" />
+                      </svg>
+                      {entry.name}
+                    </Link>
+                    <Link
+                      href={`/workspaces/${encodePath(relativePath)}/${encodeURIComponent(entry.name)}/sessions`}
+                      className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-fg-3 transition-colors hover:text-fg"
                     >
-                      Cancel
-                    </button>
-                  </div>
+                      Sessions
+                    </Link>
+                    {deleteConfirm === entry.name ? (
+                      <div className="flex items-center gap-1 pr-4">
+                        <button
+                          onClick={() => deleteFolder(entry.name)}
+                          className="px-2 py-1 text-[10px] font-semibold uppercase text-fg transition-colors hover:bg-panel-3"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          className="px-2 py-1 text-[10px] font-semibold uppercase text-fg-3 transition-colors hover:text-fg"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setDeleteConfirm(entry.name)}
+                        className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-fg-3 opacity-0 transition-all group-hover:opacity-100 hover:text-fg"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </>
                 ) : (
-                  <button
-                    onClick={() => setDeleteConfirm(entry.name)}
-                    className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-fg-3 opacity-0 transition-all group-hover:opacity-100 hover:text-fg"
+                  <Link
+                    href={`/workspaces/${encodePath(relativePath)}/editor/${encodeURIComponent(entry.name)}`}
+                    className="flex flex-1 items-center gap-2 px-4 py-3 text-[13px] text-fg-2 group-hover:text-fg"
                   >
-                    Delete
-                  </button>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-fg-3">
+                      <path d="M3 3.5A1.5 1.5 0 0 1 4.5 2h6.879a1.5 1.5 0 0 1 1.06.44l4.122 4.12A1.5 1.5 0 0 1 17 7.622V16.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 16.5v-13Z" />
+                    </svg>
+                    {entry.name}
+                  </Link>
                 )}
               </div>
             ))}
