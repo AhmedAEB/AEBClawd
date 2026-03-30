@@ -39,6 +39,34 @@ function encodePath(p: string): string {
   return p.split("/").map(encodeURIComponent).join("/");
 }
 
+const FILE_PATH_TOKEN = /(?:\.?\/)?(?:[\w@.+-]+\/)+[\w@.+-]+\.\w{1,10}(?::\d+)?/g;
+
+function LinkifiedText({ text, onFileClick }: { text: string; onFileClick: (p: string) => void }) {
+  const parts: (string | { path: string; match: string })[] = [];
+  let last = 0;
+  for (const m of text.matchAll(FILE_PATH_TOKEN)) {
+    if (m.index! > last) parts.push(text.slice(last, m.index!));
+    parts.push({ path: m[0].replace(/:\d+$/, ""), match: m[0] });
+    last = m.index! + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  if (parts.length <= 1 && typeof parts[0] === "string") return <>{text}</>;
+  return (
+    <>
+      {parts.map((p, i) =>
+        typeof p === "string" ? (
+          <span key={i}>{p}</span>
+        ) : (
+          <button key={i} onClick={() => onFileClick(p.path)}
+            className="underline decoration-dotted underline-offset-2 hover:decoration-solid cursor-pointer">
+            {p.match}
+          </button>
+        )
+      )}
+    </>
+  );
+}
+
 type MessageRole = "user" | "assistant" | "system" | "event";
 
 interface ImageAttachment {
@@ -125,6 +153,7 @@ export default function ChatView({
   const [scOpen, setScOpen] = useState(false);
   const [termOpen, setTermOpen] = useState(false);
   const [fbOpen, setFbOpen] = useState(false);
+  const [fbFile, setFbFile] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState("");
   const [availableModels, setAvailableModels] = useState<
     { value: string; displayName: string; description: string }[]
@@ -594,6 +623,15 @@ export default function ChatView({
     };
   }, [connect]);
 
+  const handleFileClick = useCallback((filePath: string) => {
+    // Resolve relative path: prepend workspace relativePath if not already prefixed
+    const resolved = filePath.startsWith(relativePath + "/")
+      ? filePath
+      : `${relativePath}/${filePath.replace(/^\.\//, "")}`;
+    setFbFile(resolved);
+    setFbOpen(true);
+  }, [relativePath]);
+
   const sendPrompt = async (directPrompt?: string) => {
     const prompt = directPrompt?.trim() || input.trim();
     const images = directPrompt ? [] : attachedImages;
@@ -883,7 +921,7 @@ export default function ChatView({
                       {label}
                     </span>
                     <span className="whitespace-pre-wrap break-all opacity-70">
-                      {msg.content}
+                      <LinkifiedText text={msg.content} onFileClick={handleFileClick} />
                     </span>
                   </div>
                 </div>
@@ -919,7 +957,7 @@ export default function ChatView({
                     </div>
                   )}
                   {msg.role === "assistant" ? (
-                    <Markdown content={msg.content} />
+                    <Markdown content={msg.content} onFileClick={handleFileClick} />
                   ) : (
                     msg.content
                   )}
@@ -1109,6 +1147,7 @@ export default function ChatView({
             <FileBrowserSidebar
               relativePath={relativePath}
               onClose={() => setFbOpen(false)}
+              openFile={fbFile}
             />
           </Suspense>
         </div>

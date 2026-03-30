@@ -96,9 +96,9 @@ function FileTree({
 }
 
 export default function FileBrowserSidebar({
-  relativePath, onClose,
+  relativePath, onClose, openFile,
 }: {
-  relativePath: string; onClose: () => void;
+  relativePath: string; onClose: () => void; openFile?: string | null;
 }) {
   const [currentFile, setCurrentFile] = useState<string | null>(null);
   const [content, setContent] = useState<string | null>(null);
@@ -108,6 +108,7 @@ export default function FileBrowserSidebar({
   const [saving, setSaving] = useState(false);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const contentRef = useRef<string>("");
+  const lastOpenedRef = useRef<string | null>(null);
 
   const fileName = currentFile?.split("/").pop() ?? "";
   const language = getLanguage(fileName);
@@ -147,6 +148,15 @@ export default function FileBrowserSidebar({
   const handleSelectFile = useCallback((fpath: string) => {
     setCurrentFile(fpath); loadFile(fpath);
   }, [loadFile]);
+
+  // Open a file when the openFile prop changes (e.g. clicked from chat)
+  useEffect(() => {
+    if (openFile && openFile !== lastOpenedRef.current) {
+      lastOpenedRef.current = openFile;
+      setCurrentFile(openFile);
+      loadFile(openFile);
+    }
+  }, [openFile, loadFile]);
 
   return (
     <div className="flex h-full flex-col bg-void">
