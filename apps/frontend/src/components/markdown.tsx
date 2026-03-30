@@ -4,14 +4,13 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 
-/** Matches strings that look like file paths (with extension or leading ./) */
-const FILE_PATH_RE = /^(?:\.?\/?)?(?:[\w@.+-]+\/)*[\w@.+-]+\.\w{1,10}(?::\d+)?$/;
+/** Known source file extensions */
+const FILE_EXTS = "ts|tsx|js|jsx|json|md|css|scss|html|xml|yaml|yml|toml|py|rb|rs|go|java|c|cpp|h|cs|php|sh|bash|sql|graphql|svg|env|lock|mjs|cjs|mts|vue|svelte|astro|txt|cfg|ini|conf|dockerfile|makefile";
+const FILE_PATH_RE = new RegExp(`^(?:\\.?\\/?)?(?:[\\w@.+-]+\\/)*[\\w@.+-]+\\.(?:${FILE_EXTS})(?::\\d+)?$`, "i");
 
 function isFilePath(text: string): boolean {
   if (!text || text.length > 200) return false;
-  // Must contain a dot for extension
   if (!text.includes(".")) return false;
-  // Reject URLs
   if (/^https?:\/\//.test(text)) return false;
   return FILE_PATH_RE.test(text);
 }

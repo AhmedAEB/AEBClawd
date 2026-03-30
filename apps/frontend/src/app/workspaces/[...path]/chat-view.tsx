@@ -39,7 +39,8 @@ function encodePath(p: string): string {
   return p.split("/").map(encodeURIComponent).join("/");
 }
 
-const FILE_PATH_TOKEN = /(?:\.?\/)?(?:[\w@.+-]+\/)+[\w@.+-]+\.\w{1,10}(?::\d+)?/g;
+/** Matches file paths like src/foo/bar.ts, ./foo.ts, package.json, etc. */
+const FILE_PATH_TOKEN = /(?:\.?\/)?(?:[\w@.+-]+\/)*[\w@.+-]+\.(?:ts|tsx|js|jsx|json|md|css|scss|html|xml|yaml|yml|toml|py|rb|rs|go|java|c|cpp|h|cs|php|sh|bash|sql|graphql|svg|env|lock|mjs|cjs|mts|vue|svelte|astro|txt|cfg|ini|conf|dockerfile|makefile)(?::\d+)?/gi;
 
 function LinkifiedText({ text, onFileClick }: { text: string; onFileClick: (p: string) => void }) {
   const parts: (string | { path: string; match: string })[] = [];
@@ -959,7 +960,7 @@ export default function ChatView({
                   {msg.role === "assistant" ? (
                     <Markdown content={msg.content} onFileClick={handleFileClick} />
                   ) : (
-                    msg.content
+                    <LinkifiedText text={msg.content} onFileClick={handleFileClick} />
                   )}
                 </div>
               </div>
@@ -1009,7 +1010,7 @@ export default function ChatView({
                     {approval.title || `Approve: ${approval.toolName}`}
                   </div>
                   <pre className="mb-3 whitespace-pre-wrap break-all border border-edge bg-panel-2 p-2.5 font-mono text-[11px] text-fg-2">
-                    {truncInput}
+                    <LinkifiedText text={truncInput} onFileClick={handleFileClick} />
                   </pre>
                   <div className="flex gap-2">
                     <button
