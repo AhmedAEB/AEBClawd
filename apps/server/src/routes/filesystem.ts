@@ -35,6 +35,20 @@ filesystem.get("/", async (c) => {
   }
 });
 
+/** Check if a file exists */
+filesystem.get("/exists", async (c) => {
+  const filePath = c.req.query("path");
+  if (!filePath) return c.json({ exists: false });
+
+  try {
+    const resolved = resolveAndValidate(filePath);
+    const stat = await fs.stat(resolved);
+    return c.json({ exists: stat.isFile() });
+  } catch {
+    return c.json({ exists: false });
+  }
+});
+
 /** Read file contents */
 filesystem.get("/read", async (c) => {
   const filePath = c.req.query("path");

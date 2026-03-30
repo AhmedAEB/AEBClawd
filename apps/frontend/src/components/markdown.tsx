@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, useEffect, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 
-/** Known source file extensions */
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+
 const FILE_EXTS = "ts|tsx|js|jsx|json|md|css|scss|html|xml|yaml|yml|toml|py|rb|rs|go|java|c|cpp|h|cs|php|sh|bash|sql|graphql|svg|env|lock|mjs|cjs|mts|vue|svelte|astro|txt|cfg|ini|conf|dockerfile|makefile";
 const FILE_PATH_RE = new RegExp(`^(?:\\.?\\/?)?(?:[\\w@.+-]+\\/)*[\\w@.+-]+\\.(?:${FILE_EXTS})(?::\\d+)?$`, "i");
 
@@ -15,7 +17,44 @@ function isFilePath(text: string): boolean {
   return FILE_PATH_RE.test(text);
 }
 
-function makeComponents(onFileClick?: (path: string) => void): Components {
+// Shared cache for file existence checks
+const existsCache = new Map<string, boolean>();
+
+function FileCodeLink({ path, children, onFileClick, workspacePath }: {
+  path: string; children: ReactNode; onFileClick: (p: string) => void; workspacePath: string;
+}) {
+  const [exists, setExists] = useState<boolean | null>(() => existsCache.get(path) ?? null);
+
+  useEffect(() => {
+    if (existsCache.has(path)) { setExists(existsCache.get(path)!); return; }
+    const absIdx = path.indexOf("/workspaces/");
+    const resolved = absIdx !== -1
+      ? path.slice(absIdx + "/workspaces/".length)
+      : `${workspacePath}/${path.replace(/^\.\//, "")}`;
+    fetch(`${API_URL}/api/filesystem/exists?path=${encodeURIComponent(resolved)}`)
+      .then((r) => r.json())
+      .then((d) => { existsCache.set(path, d.exists); setExists(d.exists); })
+      .catch(() => { existsCache.set(path, false); setExists(false); });
+  }, [path, workspacePath]);
+
+  if (!exists) {
+    return <code className="bg-panel-2 px-1 py-0.5 font-mono text-[12px]">{children}</code>;
+  }
+
+  return (
+    <code
+      role="button"
+      tabIndex={0}
+      onClick={() => onFileClick(path)}
+      onKeyDown={(e) => { if (e.key === "Enter") onFileClick(path); }}
+      className="bg-panel-2 px-1 py-0.5 font-mono text-[12px] underline decoration-fg-3 decoration-dotted underline-offset-2 cursor-pointer hover:bg-panel-3 hover:decoration-fg transition-colors"
+    >
+      {children}
+    </code>
+  );
+}
+
+function makeComponents(onFileClick?: (path: string) => void, workspacePath?: string): Components {
   return {
     h1: ({ children }) => (
       <h1 className="mb-3 mt-4 text-xl font-bold first:mt-0">{children}</h1>
@@ -52,26 +91,15 @@ function makeComponents(onFileClick?: (path: string) => void): Components {
     code: ({ className, children }) => {
       const isBlock = className?.includes("language-");
       if (isBlock) {
-        return (
-          <code className="text-[12px]">
-            {children}
-          </code>
-        );
+        return <code className="text-[12px]">{children}</code>;
       }
       const text = String(children).replace(/\n$/, "");
-      // Strip trailing :lineNumber for path detection
       const pathOnly = text.replace(/:\d+$/, "");
-      if (onFileClick && isFilePath(pathOnly)) {
+      if (onFileClick && workspacePath && isFilePath(pathOnly)) {
         return (
-          <code
-            role="button"
-            tabIndex={0}
-            onClick={() => onFileClick(pathOnly)}
-            onKeyDown={(e) => { if (e.key === "Enter") onFileClick(pathOnly); }}
-            className="bg-panel-2 px-1 py-0.5 font-mono text-[12px] underline decoration-fg-3 decoration-dotted underline-offset-2 cursor-pointer hover:bg-panel-3 hover:decoration-fg transition-colors"
-          >
+          <FileCodeLink path={pathOnly} onFileClick={onFileClick} workspacePath={workspacePath}>
             {children}
-          </code>
+          </FileCodeLink>
         );
       }
       return (
@@ -110,17 +138,18 @@ function makeComponents(onFileClick?: (path: string) => void): Components {
   };
 }
 
-// Cache for the default (no callback) case
 const defaultComponents = makeComponents();
 
 export function Markdown({
   content,
   onFileClick,
+  workspacePath,
 }: {
   content: string;
   onFileClick?: (path: string) => void;
+  workspacePath?: string;
 }) {
-  const components = onFileClick ? makeComponents(onFileClick) : defaultComponents;
+  const components = onFileClick ? makeComponents(onFileClick, workspacePath) : defaultComponents;
   return (
     <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
       {content}

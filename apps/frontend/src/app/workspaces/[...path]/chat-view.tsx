@@ -39,10 +39,45 @@ function encodePath(p: string): string {
   return p.split("/").map(encodeURIComponent).join("/");
 }
 
-/** Matches file paths like src/foo/bar.ts, ./foo.ts, package.json, etc. */
-const FILE_PATH_TOKEN = /(?:\.?\/)?(?:[\w@.+-]+\/)*[\w@.+-]+\.(?:ts|tsx|js|jsx|json|md|css|scss|html|xml|yaml|yml|toml|py|rb|rs|go|java|c|cpp|h|cs|php|sh|bash|sql|graphql|svg|env|lock|mjs|cjs|mts|vue|svelte|astro|txt|cfg|ini|conf|dockerfile|makefile)(?::\d+)?/gi;
+const FILE_EXTS = "ts|tsx|js|jsx|json|md|css|scss|html|xml|yaml|yml|toml|py|rb|rs|go|java|c|cpp|h|cs|php|sh|bash|sql|graphql|svg|env|lock|mjs|cjs|mts|vue|svelte|astro|txt|cfg|ini|conf|dockerfile|makefile";
+const FILE_PATH_TOKEN = new RegExp(`(?:\\.?\\/|\\/)?([\\/\\w@.+\\-\\[\\]]+\\.(?:${FILE_EXTS}))(?::\\d+)?`, "gi");
 
-function LinkifiedText({ text, onFileClick }: { text: string; onFileClick: (p: string) => void }) {
+// Cache file existence checks so we don't re-fetch
+const fileExistsCache = new Map<string, boolean>();
+
+function useFileExists(path: string, workspacePath: string): boolean | null {
+  const [exists, setExists] = useState<boolean | null>(() => fileExistsCache.get(path) ?? null);
+  useEffect(() => {
+    if (fileExistsCache.has(path)) { setExists(fileExistsCache.get(path)!); return; }
+    // Resolve to API path the same way handleFileClick does
+    const absIdx = path.indexOf("/workspaces/");
+    const resolved = absIdx !== -1
+      ? path.slice(absIdx + "/workspaces/".length)
+      : `${workspacePath}/${path.replace(/^\.\//, "")}`;
+    fetch(`${API_URL}/api/filesystem/exists?path=${encodeURIComponent(resolved)}`)
+      .then((r) => r.json())
+      .then((d) => { fileExistsCache.set(path, d.exists); setExists(d.exists); })
+      .catch(() => { fileExistsCache.set(path, false); setExists(false); });
+  }, [path, workspacePath]);
+  return exists;
+}
+
+function FileLink({ path, match, onFileClick, workspacePath }: {
+  path: string; match: string; onFileClick: (p: string) => void; workspacePath: string;
+}) {
+  const exists = useFileExists(path, workspacePath);
+  if (exists === null || exists === false) return <>{match}</>;
+  return (
+    <button onClick={() => onFileClick(path)}
+      className="underline decoration-dotted underline-offset-2 hover:decoration-solid cursor-pointer">
+      {match}
+    </button>
+  );
+}
+
+function LinkifiedText({ text, onFileClick, workspacePath }: {
+  text: string; onFileClick: (p: string) => void; workspacePath: string;
+}) {
   const parts: (string | { path: string; match: string })[] = [];
   let last = 0;
   for (const m of text.matchAll(FILE_PATH_TOKEN)) {
@@ -58,10 +93,7 @@ function LinkifiedText({ text, onFileClick }: { text: string; onFileClick: (p: s
         typeof p === "string" ? (
           <span key={i}>{p}</span>
         ) : (
-          <button key={i} onClick={() => onFileClick(p.path)}
-            className="underline decoration-dotted underline-offset-2 hover:decoration-solid cursor-pointer">
-            {p.match}
-          </button>
+          <FileLink key={i} path={p.path} match={p.match} onFileClick={onFileClick} workspacePath={workspacePath} />
         )
       )}
     </>
@@ -625,9 +657,10 @@ export default function ChatView({
   }, [connect]);
 
   const handleFileClick = useCallback((filePath: string) => {
-    // Resolve relative path: prepend workspace relativePath if not already prefixed
-    const resolved = filePath.startsWith(relativePath + "/")
-      ? filePath
+    // Absolute paths: strip up to /workspaces/ to get API-relative path
+    const absIdx = filePath.indexOf("/workspaces/");
+    let resolved = absIdx !== -1
+      ? filePath.slice(absIdx + "/workspaces/".length)
       : `${relativePath}/${filePath.replace(/^\.\//, "")}`;
     setFbFile(resolved);
     setFbOpen(true);
@@ -922,7 +955,7 @@ export default function ChatView({
                       {label}
                     </span>
                     <span className="whitespace-pre-wrap break-all opacity-70">
-                      <LinkifiedText text={msg.content} onFileClick={handleFileClick} />
+                      <LinkifiedText text={msg.content} onFileClick={handleFileClick} workspacePath={relativePath} />
                     </span>
                   </div>
                 </div>
@@ -958,9 +991,9 @@ export default function ChatView({
                     </div>
                   )}
                   {msg.role === "assistant" ? (
-                    <Markdown content={msg.content} onFileClick={handleFileClick} />
+                    <Markdown content={msg.content} onFileClick={handleFileClick} workspacePath={relativePath} />
                   ) : (
-                    <LinkifiedText text={msg.content} onFileClick={handleFileClick} />
+                    <LinkifiedText text={msg.content} onFileClick={handleFileClick} workspacePath={relativePath} />
                   )}
                 </div>
               </div>
@@ -1010,7 +1043,7 @@ export default function ChatView({
                     {approval.title || `Approve: ${approval.toolName}`}
                   </div>
                   <pre className="mb-3 whitespace-pre-wrap break-all border border-edge bg-panel-2 p-2.5 font-mono text-[11px] text-fg-2">
-                    <LinkifiedText text={truncInput} onFileClick={handleFileClick} />
+                    <LinkifiedText text={truncInput} onFileClick={handleFileClick} workspacePath={relativePath} />
                   </pre>
                   <div className="flex gap-2">
                     <button
