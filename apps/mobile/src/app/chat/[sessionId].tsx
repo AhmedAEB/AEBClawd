@@ -210,6 +210,7 @@ export default function ChatScreen() {
                   });
                 } else if (block.type === "text" && block.text) {
                   parsed.push({
+                    id: generateMessageId(),
                     role: "assistant",
                     content: block.text,
                     timestamp: 0,
@@ -223,6 +224,7 @@ export default function ChatScreen() {
                     inputStr.slice(0, 300) +
                     (inputStr.length > 300 ? "..." : "");
                   parsed.push({
+                    id: generateMessageId(),
                     role: "event",
                     content: `${block.name}\n${truncInput}`,
                     timestamp: 0,
@@ -239,6 +241,7 @@ export default function ChatScreen() {
         console.error("[sessions] Failed to load history:", err);
         setMessages([
           {
+            id: generateMessageId(),
             role: "event",
             content: "Failed to load session history",
             timestamp: Date.now(),
@@ -267,7 +270,7 @@ export default function ChatScreen() {
       }
       return [
         ...prev,
-        { role: "assistant" as const, content: text, timestamp: Date.now() },
+        { id: generateMessageId(), role: "assistant" as const, content: text, timestamp: Date.now() },
       ];
     });
   }, []);
@@ -277,6 +280,7 @@ export default function ChatScreen() {
       setMessages((prev) => [
         ...prev,
         {
+          id: generateMessageId(),
           role: "event" as const,
           content,
           timestamp: Date.now(),
@@ -484,6 +488,7 @@ export default function ChatScreen() {
     setMessages((prev) => [
       ...prev,
       {
+        id: generateMessageId(),
         role: "user",
         content: effectivePrompt,
         timestamp: Date.now(),
@@ -725,7 +730,7 @@ export default function ChatScreen() {
           <FlatList
             ref={flatListRef}
             data={messages}
-            keyExtractor={(_, i) => String(i)}
+            keyExtractor={(item) => item.id}
             renderItem={renderMessage}
             contentContainerStyle={styles.messagesList}
             onContentSizeChange={scrollToBottom}
