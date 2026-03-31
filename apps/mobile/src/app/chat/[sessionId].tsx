@@ -32,7 +32,13 @@ interface ImageAttachment {
   preview: string;
 }
 
+let nextMessageId = 0;
+function generateMessageId() {
+  return `msg-${Date.now()}-${nextMessageId++}`;
+}
+
 interface Message {
+  id: string;
   role: MessageRole;
   content: string;
   timestamp: number;
@@ -155,7 +161,7 @@ export default function ChatScreen() {
           if (msg.type === "user") {
             const content = msg.message?.content;
             if (typeof content === "string") {
-              parsed.push({ role: "user", content, timestamp: 0 });
+              parsed.push({ id: generateMessageId(), role: "user", content, timestamp: 0 });
             } else if (Array.isArray(content)) {
               const textParts: string[] = [];
               for (const block of content) {
@@ -171,6 +177,7 @@ export default function ChatScreen() {
                       ? resultContent.slice(0, 500) + "..."
                       : resultContent;
                   parsed.push({
+                    id: generateMessageId(),
                     role: "event",
                     content: truncated,
                     timestamp: 0,
@@ -180,6 +187,7 @@ export default function ChatScreen() {
               }
               if (textParts.length > 0) {
                 parsed.push({
+                  id: generateMessageId(),
                   role: "user",
                   content: textParts.join(""),
                   timestamp: 0,
@@ -192,6 +200,7 @@ export default function ChatScreen() {
               for (const block of blocks as any[]) {
                 if (block.type === "thinking" && block.thinking) {
                   parsed.push({
+                    id: generateMessageId(),
                     role: "event",
                     content:
                       block.thinking.slice(0, 500) +

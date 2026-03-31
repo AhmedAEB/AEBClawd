@@ -109,7 +109,13 @@ interface ImageAttachment {
   preview: string; // data URL for display
 }
 
+let nextMessageId = 0;
+function generateMessageId() {
+  return `msg-${Date.now()}-${nextMessageId++}`;
+}
+
 interface Message {
+  id: string;
   role: MessageRole;
   content: string;
   timestamp: number;
@@ -337,7 +343,7 @@ export default function ChatView({
           if (msg.type === "user") {
             const content = msg.message?.content;
             if (typeof content === "string") {
-              parsed.push({ role: "user", content, timestamp: 0 });
+              parsed.push({ id: generateMessageId(), role: "user", content, timestamp: 0 });
             } else if (Array.isArray(content)) {
               const textParts: string[] = [];
               for (const block of content) {
@@ -353,6 +359,7 @@ export default function ChatView({
                       ? resultContent.slice(0, 500) + "..."
                       : resultContent;
                   parsed.push({
+                    id: generateMessageId(),
                     role: "event",
                     content: truncated,
                     timestamp: 0,
@@ -361,7 +368,7 @@ export default function ChatView({
                 }
               }
               if (textParts.length > 0) {
-                parsed.push({ role: "user", content: textParts.join(""), timestamp: 0 });
+                parsed.push({ id: generateMessageId(), role: "user", content: textParts.join(""), timestamp: 0 });
               }
             }
           } else if (msg.type === "assistant") {
@@ -370,6 +377,7 @@ export default function ChatView({
               for (const block of blocks as any[]) {
                 if (block.type === "thinking" && block.thinking) {
                   parsed.push({
+                    id: generateMessageId(),
                     role: "event",
                     content:
                       block.thinking.slice(0, 500) +
@@ -378,7 +386,7 @@ export default function ChatView({
                     eventType: "thinking",
                   });
                 } else if (block.type === "text" && block.text) {
-                  parsed.push({ role: "assistant", content: block.text, timestamp: 0 });
+                  parsed.push({ id: generateMessageId(), role: "assistant", content: block.text, timestamp: 0 });
                 } else if (block.type === "tool_use") {
                   const inputStr =
                     typeof block.input === "string"
@@ -387,6 +395,7 @@ export default function ChatView({
                   const truncInput =
                     inputStr.slice(0, 300) + (inputStr.length > 300 ? "..." : "");
                   parsed.push({
+                    id: generateMessageId(),
                     role: "event",
                     content: `${block.name}\n${truncInput}`,
                     timestamp: 0,
@@ -403,6 +412,7 @@ export default function ChatView({
         console.error("[sessions] Failed to load history:", err);
         setMessages([
           {
+            id: generateMessageId(),
             role: "event",
             content: "Failed to load session history",
             timestamp: Date.now(),
@@ -428,7 +438,7 @@ export default function ChatView({
       }
       return [
         ...prev,
-        { role: "assistant" as const, content: text, timestamp: Date.now() },
+        { id: generateMessageId(), role: "assistant" as const, content: text, timestamp: Date.now() },
       ];
     });
   }, []);
@@ -437,7 +447,7 @@ export default function ChatView({
     (eventType: string, content: string, meta?: Record<string, any>) => {
       setMessages((prev) => [
         ...prev,
-        { role: "event" as const, content, timestamp: Date.now(), eventType, meta },
+        { id: generateMessageId(), role: "event" as const, content, timestamp: Date.now(), eventType, meta },
       ]);
     },
     []
@@ -681,7 +691,7 @@ export default function ChatView({
 
     setMessages((prev) => [
       ...prev,
-      { role: "user", content: effectivePrompt, timestamp: Date.now(), images: images.length > 0 ? images : undefined },
+      { id: generateMessageId(), role: "user", content: effectivePrompt, timestamp: Date.now(), images: images.length > 0 ? images : undefined },
     ]);
 
     await fetch(`${API_URL}/api/stream/prompt`, {
@@ -733,7 +743,7 @@ export default function ChatView({
 
   const handleVoiceMessage = useCallback(
     (text: string, role: "user" | "assistant") => {
-      setMessages((prev) => [...prev, { role, content: text, timestamp: Date.now() }]);
+      setMessages((prev) => [...prev, { id: generateMessageId(), role, content: text, timestamp: Date.now() }]);
     },
     [],
   );
@@ -947,7 +957,7 @@ export default function ChatView({
               const label =
                 eventLabels[msg.eventType ?? "system"] ?? "EVENT";
               return (
-                <div key={i} className="animate-fade-in">
+                <div key={msg.id} className="animate-fade-in">
                   <div
                     className={`border-l-2 ${accent} bg-panel-2 py-1.5 pl-3 pr-3 font-mono text-[11px] leading-relaxed`}
                   >
@@ -964,7 +974,7 @@ export default function ChatView({
 
             return (
               <div
-                key={i}
+                key={msg.id}
                 className={`flex animate-fade-in ${
                   msg.role === "user" ? "justify-end" : "justify-start"
                 }`}
