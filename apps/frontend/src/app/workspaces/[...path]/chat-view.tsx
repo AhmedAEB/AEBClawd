@@ -39,8 +39,8 @@ function encodePath(p: string): string {
   return p.split("/").map(encodeURIComponent).join("/");
 }
 
-const FILE_EXTS = "ts|tsx|js|jsx|json|md|css|scss|html|xml|yaml|yml|toml|py|rb|rs|go|java|c|cpp|h|cs|php|sh|bash|sql|graphql|svg|env|lock|mjs|cjs|mts|vue|svelte|astro|txt|cfg|ini|conf|dockerfile|makefile";
-const FILE_PATH_TOKEN = new RegExp(`(?:\\.?\\/|\\/)?([\\/\\w@.+\\-\\[\\]]+\\.(?:${FILE_EXTS}))(?::\\d+)?`, "gi");
+const FILE_EXTS = "tsx|jsx|mjs|cjs|mts|json|scss|yaml|yml|toml|java|cpp|php|bash|sql|graphql|svg|vue|svelte|astro|conf|lock|dockerfile|makefile|ts|js|md|css|html|xml|py|rb|rs|go|cs|sh|txt|cfg|ini|env|c|h";
+const FILE_PATH_TOKEN = new RegExp(`(?:\\.?\\/|\\/)?([\\/\\w@.+\\-\\[\\]]+\\.(?:${FILE_EXTS}))\\b(?::\\d+)?`, "gi");
 
 // Cache file existence checks so we don't re-fetch
 const fileExistsCache = new Map<string, boolean>();

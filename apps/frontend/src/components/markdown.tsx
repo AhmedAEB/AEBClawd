@@ -7,8 +7,8 @@ import type { Components } from "react-markdown";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
-const FILE_EXTS = "ts|tsx|js|jsx|json|md|css|scss|html|xml|yaml|yml|toml|py|rb|rs|go|java|c|cpp|h|cs|php|sh|bash|sql|graphql|svg|env|lock|mjs|cjs|mts|vue|svelte|astro|txt|cfg|ini|conf|dockerfile|makefile";
-const FILE_PATH_RE = new RegExp(`^(?:\\.?\\/?)?(?:[\\w@.+-]+\\/)*[\\w@.+-]+\\.(?:${FILE_EXTS})(?::\\d+)?$`, "i");
+const FILE_EXTS = "tsx|jsx|mjs|cjs|mts|json|scss|yaml|yml|toml|java|cpp|php|bash|sql|graphql|svg|vue|svelte|astro|conf|lock|dockerfile|makefile|ts|js|md|css|html|xml|py|rb|rs|go|cs|sh|txt|cfg|ini|env|c|h";
+const FILE_PATH_RE = new RegExp(`^(?:\\.?\\/?)?(?:[\\w@.+-]+\\/)*[\\w@.+-]+\\.(?:${FILE_EXTS})\\b(?::\\d+)?$`, "i");
 
 function isFilePath(text: string): boolean {
   if (!text || text.length > 200) return false;
